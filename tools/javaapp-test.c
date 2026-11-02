@@ -204,7 +204,7 @@ static void *run(void *p)
     snprintf(paths[nb], sizeof(paths[nb]), "%s/../com.android.i18n/javalib/core-icu4j.jar", art); boot[nb] = paths[nb]; nb++;
     snprintf(paths[nb], sizeof(paths[nb]), "%s/../com.android.conscrypt/javalib/conscrypt.jar", art); boot[nb] = paths[nb]; nb++;
     snprintf(paths[nb], sizeof(paths[nb]), "%s", getenv("TL_FRAMEWORK") ? getenv("TL_FRAMEWORK") : "/Volumes/GTAV/husk2/java/husk-framework.dex"); boot[nb] = paths[nb]; nb++;
-    snprintf(paths[nb], sizeof(paths[nb]), "/Volumes/GTAV/husk2/modules/jars/org.apache.http.legacy.jar"); boot[nb] = paths[nb]; nb++;
+    snprintf(paths[nb], sizeof(paths[nb]), "%s/../org.apache.http.legacy.jar", art); boot[nb] = paths[nb]; nb++;
     { char v[800];
       snprintf(v, sizeof(v), "%s", art); setenv("ANDROID_ART_ROOT", v, 0);
       snprintf(v, sizeof(v), "%s/../com.android.i18n", art); setenv("ANDROID_I18N_ROOT", v, 0);
@@ -223,7 +223,13 @@ static void *run(void *p)
     char tmp[600]; snprintf(tmp, sizeof(tmp), "%s/husk-javaapp-XXXXXX", scratch);
     if (getenv("TL_DATA")) { snprintf(tmp, sizeof(tmp), "%s", getenv("TL_DATA")); mkdir(tmp, 0755); } else mkdtemp(tmp);
     const char *cef = "/Users/davi/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/Frameworks/Chromium Embedded Framework.framework/Versions/A/Libraries";
-    static char egl[700], gles[700]; snprintf(egl, sizeof(egl), "%s/libEGL.dylib", cef); snprintf(gles, sizeof(gles), "%s/libGLESv2.dylib", cef);
+    static char egl[700], gles[700]; egl[0] = gles[0] = 0;
+    snprintf(egl, sizeof(egl), "%s/libEGL.dylib", cef); snprintf(gles, sizeof(gles), "%s/libGLESv2.dylib", cef);
+    if (access(egl, R_OK) != 0) egl[0] = gles[0] = 0;         /* no ANGLE here: run windowless (DVM + Activity only) */
+    const char *use_egl = getenv("TL_ANGLE_EGL") ? getenv("TL_ANGLE_EGL") : (egl[0] ? egl : NULL);
+    const char *use_gles = getenv("TL_ANGLE_GLES") ? getenv("TL_ANGLE_GLES") : (gles[0] ? gles : NULL);
+    if (use_egl && !*use_egl) use_egl = NULL;
+    if (use_gles && !*use_gles) use_gles = NULL;
     static char frames[600]; snprintf(frames, sizeof(frames), "%s/husk-jframes-XXXXXX", scratch); mkdtemp(frames);
     g_frame_dir = frames;
     fprintf(stderr, "frames: %s\ndata: %s\n", frames, tmp);
@@ -248,7 +254,7 @@ static void *run(void *p)
     if (argc <= 4) { int tl_manifest_orientation(const char *); if (tl_manifest_orientation(apk) == 0) { int t = w; w = h; h = t; fprintf(stderr, "javaapp: landscape (the manifest asks for it)\n"); } }
     if (getenv("TL_SPLITS")) { char *l = strdup(getenv("TL_SPLITS")); for (char *t = strtok(l, ":"); t; t = strtok(NULL, ":")) tl_ld_queue_split(t); }
     tl_javaapp_config cfg = { .apk_path = apk, .data_dir = tmp, .package_name = getenv("TL_PACKAGE"), .width = w, .height = h, .density = 2.625f,
-                              .angle_egl = getenv("TL_ANGLE_EGL") ? getenv("TL_ANGLE_EGL") : egl, .angle_gles = getenv("TL_ANGLE_GLES") ? getenv("TL_ANGLE_GLES") : gles,
+                              .angle_egl = use_egl, .angle_gles = use_gles,
                               .frame_dir = frames, .frame_every = getenv("TL_FRAMES") ? atoi(getenv("TL_FRAMES")) : -1,
                               .framework_res = getenv("TL_FRAMEWORK_RES") ? getenv("TL_FRAMEWORK_RES") : "/Volumes/GTAV/husk2/java/framework-res.apk",
                               .show_keyboard = h_keyboard, .set_clipboard = h_set_clip, .get_clipboard = h_get_clip, .share = h_share, .set_orientation = h_orientation };

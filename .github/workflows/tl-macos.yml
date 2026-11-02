@@ -231,6 +231,41 @@ jobs:
             --framework "$RUNNER_TEMP/build/husk-framework.dex" \
             "$RUNNER_TEMP"/apks/*.apk | tee "$RUNNER_TEMP/framework-gap.txt"
 
+      - name: Build the Java-app harness
+        continue-on-error: true
+        run: |
+          set -eux
+          OUT="$RUNNER_TEMP/tl"; mkdir -p "$OUT"
+          clang -arch arm64 -O1 -g -o "$OUT/javaapp-test" \
+            tools/javaapp-test.c tests/translation-layer/host_audio_stub.c \
+            src/translation-layer-next/*.c src/translation-layer-next/*.m \
+            -I src/translation-layer-next -I src/translation-layer \
+            -fobjc-arc -lz \
+            -framework Foundation -framework CoreFoundation -framework CoreGraphics \
+            -framework CoreText -framework ImageIO -framework AudioToolbox \
+            -framework Security -framework Metal -framework QuartzCore \
+            -framework AppKit -framework WebKit -framework IOKit -framework CoreServices
+
+      - name: Run the Java apps on the Dalvik runtime
+        continue-on-error: true
+        run: |
+          set -ux
+          OUT="$RUNNER_TEMP/tl"
+          ART="$RUNNER_TEMP/java-runtime/com.android.art"
+          mkdir -p "$RUNNER_TEMP/jdata"
+          for apk in "$RUNNER_TEMP"/apks/*.apk; do
+            name=$(basename "$apk")
+            echo "=== $name" | tee -a "$RUNNER_TEMP/javaapp.txt"
+            TL_ART="$ART" \
+            TL_FRAMEWORK="$RUNNER_TEMP/build/husk-framework.dex" \
+            TL_FRAMEWORK_RES="$RUNNER_TEMP/java-runtime/framework-res.apk" \
+            TL_TMP="$RUNNER_TEMP/jdata" TL_DATA="$RUNNER_TEMP/jdata/$name" \
+              "$OUT/javaapp-test" "$apk" 20 > "$RUNNER_TEMP/$name.javaapp.log" 2>&1
+            rc=$?
+            echo "  exit=$rc" | tee -a "$RUNNER_TEMP/javaapp.txt"
+            tail -30 "$RUNNER_TEMP/$name.javaapp.log" | tee -a "$RUNNER_TEMP/javaapp.txt"
+          done
+
       - name: Upload the framework and the report
         if: always()
         uses: actions/upload-artifact@v4
@@ -239,4 +274,6 @@ jobs:
           path: |
             ${{ runner.temp }}/build/husk-framework.dex
             ${{ runner.temp }}/framework-gap.txt
+            ${{ runner.temp }}/javaapp.txt
+            ${{ runner.temp }}/*.javaapp.log
           if-no-files-found: warn
