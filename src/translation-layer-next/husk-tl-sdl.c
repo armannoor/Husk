@@ -751,6 +751,9 @@ bool tl_sdl_start(const tl_ga_config *cfg, const char *activity_class)
     snprintf(dir, sizeof(dir), "%s/sdcard/Android/data/%s/files", S.data, S.pkg); mkdirs(dir);
     /* python-for-android (Kivy, pygame): the app and Python unpacked, and the environment its start.c reads. */
     { bool tl_python_prepare(const char *apk, const char *data_dir); tl_python_prepare(S.apk, S.data); }
+    /* Ren'Py: private.mp3 (main.py, renpy/, lib/python3.12) unpacked, and the ANDROID_* variables
+       PythonSDLActivity.preparePython would have set before librenpython's SDL_main starts Python. */
+    { bool tl_renpy_prepare(const char *apk, const char *data_dir, const char *package_name); tl_renpy_prepare(S.apk, S.data, S.pkg); }
 
     tl_set_data_dir(cfg->data_dir);
     tl_nwindow_configure(cfg->width, cfg->height, cfg->metal_layer);

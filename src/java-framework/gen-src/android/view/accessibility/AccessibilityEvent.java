@@ -90,6 +90,8 @@ public final class AccessibilityEvent extends android.view.accessibility.Accessi
     public android.view.accessibility.AccessibilityRecord getRecord(int p0) { return null; }
     public int getRecordCount() { return (huskProps.get("RecordCount") instanceof Integer ? (Integer) huskProps.get("RecordCount") : 0); }
     public int getSpeechStateChangeTypes() { return (huskProps.get("SpeechStateChangeTypes") instanceof Integer ? (Integer) huskProps.get("SpeechStateChangeTypes") : 0); }
+    public int getTextChangeTypes() { return (huskProps.get("TextChangeTypes") instanceof Integer ? (Integer) huskProps.get("TextChangeTypes") : 0); }
+    public void setTextChangeTypes(int p0) { huskProps.put("TextChangeTypes", Integer.valueOf(p0)); }
     public int getWindowChanges() { return (huskProps.get("WindowChanges") instanceof Integer ? (Integer) huskProps.get("WindowChanges") : 0); }
     public void initFromParcel(android.os.Parcel p0) {}
     public boolean isAccessibilityDataSensitive() { return (huskProps.get("AccessibilityDataSensitive") instanceof Boolean ? (Boolean) huskProps.get("AccessibilityDataSensitive") : false); }

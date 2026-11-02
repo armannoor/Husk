@@ -111,6 +111,56 @@ bool tl_python_is_app(const char *apk)
     return yes;
 }
 
+/* Ren'Py's own layout (librenpython.so with CPython and SDL inside, and assets/private.mp3, a gzipped tar of
+ * main.py + renpy/ + lib/python3.12). Its PythonSDLActivity.preparePython sets the four ANDROID_* variables and
+ * unpacks private.mp3 into getFilesDir(); no Java runs under the SDL driver, so do both here. */
+bool tl_renpy_is_app(const char *apk)
+{
+    tl_zip z; char err[160];
+    if (!tl_zip_open(&z, apk, err, sizeof(err))) return false;
+    bool yes = tl_zip_find(&z, "assets/private.mp3") && tl_zip_find(&z, "lib/arm64-v8a/librenpython.so");
+    tl_zip_close(&z);
+    return yes;
+}
+
+bool tl_renpy_prepare(const char *apk, const char *data_dir, const char *package_name)
+{
+    if (!tl_renpy_is_app(apk)) return false;
+    char files[1024], stamp_path[1100], stamp[64];
+    snprintf(files, sizeof(files), "%s/files", data_dir);
+    mkdirs(files);
+    snprintf(stamp_path, sizeof(stamp_path), "%s/.husk-renpy", files);
+    struct stat st;
+    stat(apk, &st);
+    snprintf(stamp, sizeof(stamp), "%lld-%ld", (long long)st.st_size, (long)st.st_mtime);
+    char have[64] = "";
+    FILE *f = fopen(stamp_path, "r");
+    if (f) { if (!fgets(have, sizeof(have), f)) have[0] = 0; fclose(f); }
+    if (strcmp(have, stamp)) {
+        tl_log_line("renpy: unpacking private.mp3 into %s", files);
+        tl_zip z; char err[160];
+        if (!tl_zip_open(&z, apk, err, sizeof(err))) return false;
+        extract_entry(&z, "assets/private.mp3", files);
+        tl_zip_close(&z);
+        f = fopen(stamp_path, "w");
+        if (f) { fputs(stamp, f); fclose(f); }
+    }
+    char pub[1200], old[1200];
+    snprintf(pub, sizeof(pub), "%s/sdcard/Android/data/%s/files", data_dir, package_name ? package_name : "");
+    snprintf(old, sizeof(old), "%s/sdcard/%s", data_dir, package_name ? package_name : "");
+    mkdirs(pub);
+    mkdirs(old);
+    /* What PythonSDLActivity.nativeSetEnv would have set from getFilesDir(), getExternalFilesDir(null),
+       Environment.getExternalStorageDirectory()/package, and ApplicationInfo.sourceDir. */
+    setenv("ANDROID_PRIVATE", files, 1);
+    setenv("ANDROID_PUBLIC", pub, 1);
+    setenv("ANDROID_OLD_PUBLIC", old, 1);
+    setenv("ANDROID_APK", apk, 1);
+    tl_log_line("renpy: ANDROID_PRIVATE=%s", files);
+    return true;
+}
+
+
 /* Unpack the app and Python once per APK (a stamp of its size and time), and set the environment. */
 bool tl_python_prepare(const char *apk, const char *data_dir)
 {

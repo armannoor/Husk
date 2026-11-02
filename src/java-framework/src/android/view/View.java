@@ -344,6 +344,12 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     // ---- hierarchy
     /* the window is the parent only of its own root view (a removed view that still remembers the window has none) */
     public final ViewParent getParent() { return mParent != null ? mParent : mRoot != null && mRoot.getView() == this ? mRoot : null; }
+    /** The parent an accessibility node reports: like getParent(), but a view whose parent is itself invisible is skipped. */
+    public ViewParent getParentForAccessibility() {
+        ViewParent p = getParent();
+        while (p instanceof View && ((View) p).getImportantForAccessibility() == IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS) p = ((View) p).getParent();
+        return p;
+    }
     public View getRootView() { View v = this; while (v.mParent != null) v = v.mParent; return v; }
     public boolean isAttachedToWindow() { return mRoot != null; }
     public boolean isLaidOut() { return mRoot != null && (mPrivateFlags & PFLAG_FORCE_LAYOUT) == 0; }
@@ -1635,6 +1641,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback {
     public boolean getHasOverlappingRendering() { return false; }
     protected float getHorizontalScrollFactor() { return 0f; }
     protected int getHorizontalScrollbarHeight() { return 0; }
+    public int getVerticalScrollbarWidth() { return 0; }
     public android.graphics.drawable.Drawable getHorizontalScrollbarThumbDrawable() { return null; }
     public android.graphics.drawable.Drawable getHorizontalScrollbarTrackDrawable() { return (android.graphics.drawable.Drawable) huskFill.get("HorizontalScrollbarTrackDrawable"); }
     public void getHotspotBounds(android.graphics.Rect p0) {}

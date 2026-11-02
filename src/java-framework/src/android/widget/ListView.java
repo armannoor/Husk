@@ -120,7 +120,7 @@ public class ListView extends AbsListView {
         }
         return returnedHeight;
     }
-    private int getVerticalScrollbarWidth() { return 0; }
+    public int getVerticalScrollbarWidth() { return 0; }
     @Override int findMotionRow(int y) {
         int childCount = getChildCount();
         if (childCount > 0) {

@@ -55,18 +55,52 @@ public final class PlaybackState implements android.os.Parcelable {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         public Builder() {}
         public Builder(android.media.session.PlaybackState p0) {}
-        public android.media.session.PlaybackState.Builder addCustomAction(android.media.session.PlaybackState.CustomAction p0) { return this; }
-        public android.media.session.PlaybackState.Builder addCustomAction(java.lang.String p0, java.lang.String p1, int p2) { return this; }
+        public android.media.session.PlaybackState.Builder addCustomAction(android.media.session.PlaybackState.CustomAction p0) {
+            java.util.List l = (java.util.List) huskProps.get("CustomActions");
+            if (l == null) { l = new java.util.ArrayList(); huskProps.put("CustomActions", l); }
+            l.add(p0);
+            return this;
+        }
+        public android.media.session.PlaybackState.Builder addCustomAction(java.lang.String p0, java.lang.String p1, int p2) {
+            return addCustomAction(new android.media.session.PlaybackState.CustomAction.Builder(p0, p1, p2).build());
+        }
         public android.media.session.PlaybackState build() { android.media.session.PlaybackState x = new android.media.session.PlaybackState(); x.huskProps.putAll(huskProps); return x; }
         public android.media.session.PlaybackState.Builder setActions(long p0) { huskProps.put("Actions", Long.valueOf(p0)); return this; }
         public android.media.session.PlaybackState.Builder setActiveQueueItemId(long p0) { huskProps.put("ActiveQueueItemId", Long.valueOf(p0)); return this; }
         public android.media.session.PlaybackState.Builder setBufferedPosition(long p0) { huskProps.put("BufferedPosition", Long.valueOf(p0)); return this; }
         public android.media.session.PlaybackState.Builder setErrorMessage(java.lang.CharSequence p0) { huskProps.put("ErrorMessage", p0); return this; }
         public android.media.session.PlaybackState.Builder setExtras(android.os.Bundle p0) { huskProps.put("Extras", p0); return this; }
-        public android.media.session.PlaybackState.Builder setState(int p0, long p1, float p2) { return this; }
-        public android.media.session.PlaybackState.Builder setState(int p0, long p1, float p2, long p3) { return this; }
+        public android.media.session.PlaybackState.Builder setState(int p0, long p1, float p2) {
+            huskProps.put("State", Integer.valueOf(p0)); huskProps.put("Position", Long.valueOf(p1)); huskProps.put("PlaybackSpeed", Float.valueOf(p2));
+            return this;
+        }
+        public android.media.session.PlaybackState.Builder setState(int p0, long p1, float p2, long p3) {
+            setState(p0, p1, p2); huskProps.put("LastPositionUpdateTime", Long.valueOf(p3));
+            return this;
+        }
     }
-    public static abstract class CustomAction implements android.os.Parcelable {
-        protected CustomAction() {}
+    public static final class CustomAction implements android.os.Parcelable {
+        private final String mAction;
+        private final CharSequence mName;
+        private final int mIcon;
+        private final android.os.Bundle mExtras;
+        private CustomAction(String action, CharSequence name, int icon, android.os.Bundle extras) {
+            mAction = action; mName = name; mIcon = icon; mExtras = extras;
+        }
+        public String getAction() { return mAction; }
+        public CharSequence getName() { return mName; }
+        public int getIcon() { return mIcon; }
+        public android.os.Bundle getExtras() { return mExtras != null ? mExtras : new android.os.Bundle(); }
+        public int describeContents() { return 0; }
+        public void writeToParcel(android.os.Parcel p0, int p1) {}
+        public static final class Builder {
+            private final String mAction;
+            private final CharSequence mName;
+            private final int mIcon;
+            private android.os.Bundle mExtras;
+            public Builder(String action, CharSequence name, int icon) { mAction = action; mName = name; mIcon = icon; }
+            public Builder setExtras(android.os.Bundle extras) { mExtras = extras; return this; }
+            public CustomAction build() { return new CustomAction(mAction, mName, mIcon, mExtras); }
+        }
     }
 }

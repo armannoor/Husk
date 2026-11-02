@@ -29,6 +29,10 @@ public class Notification implements android.os.Parcelable {
     public android.graphics.Bitmap largeIcon;
     public android.widget.RemoteViews contentView, bigContentView, headsUpContentView;
     public Notification publicVersion;
+    public static final android.os.Parcelable.Creator<Notification> CREATOR = new android.os.Parcelable.Creator<Notification>() {
+        public Notification createFromParcel(android.os.Parcel p) { return new Notification(); }
+        public Notification[] newArray(int n) { return new Notification[n]; }
+    };
     public Notification() {}
     public Notification(int icon, CharSequence ticker, long when) { this.icon = icon; tickerText = ticker; this.when = when; }
     public String huskText() { if (extras == null) return tickerText != null ? tickerText.toString() : ""; CharSequence t = extras.getCharSequence(EXTRA_TITLE), x = extras.getCharSequence(EXTRA_TEXT); return (t != null ? t : "") + (x != null ? ": " + x : ""); }

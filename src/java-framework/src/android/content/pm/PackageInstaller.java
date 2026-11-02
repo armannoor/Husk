@@ -327,6 +327,7 @@ public class PackageInstaller { public java.util.List<SessionInfo> getMySessions
             public android.content.pm.PackageInstaller.PreapprovalDetails.Builder setIcon(android.graphics.Bitmap p0) { huskProps.put("Icon", p0); return this; }
             public android.content.pm.PackageInstaller.PreapprovalDetails.Builder setLabel(java.lang.CharSequence p0) { huskProps.put("Label", p0); return this; }
             public android.content.pm.PackageInstaller.PreapprovalDetails.Builder setPackageName(java.lang.String p0) { huskProps.put("PackageName", p0); return this; }
+            public android.content.pm.PackageInstaller.PreapprovalDetails.Builder setLocale(android.icu.util.ULocale p0) { huskProps.put("Locale", p0); return this; }
         }
     }
     public static class Session implements java.io.Closeable {

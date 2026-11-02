@@ -174,6 +174,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     protected void detachViewFromParent(View child) { int i = indexOfChild(child); if (i >= 0) detachViewFromParent(i); }
     protected void detachViewFromParent(int index) { View c = mChildren[index]; removeFromArray(index); if (c != null) c.mParent = null; }
     protected void detachAllViewsFromParent() { for (int i = mChildrenCount - 1; i >= 0; i--) detachViewFromParent(i); }
+    protected void detachViewsFromParent(int start, int count) { for (int i = start + count - 1; i >= start; i--) detachViewFromParent(i); }
     protected void removeDetachedView(View child, boolean animate) { if (child.isAttachedToWindow()) child.dispatchDetachedFromWindow(); onViewRemoved(child); }
     private void removeFromArray(int index) {
         System.arraycopy(mChildren, index + 1, mChildren, index, mChildrenCount - index - 1);

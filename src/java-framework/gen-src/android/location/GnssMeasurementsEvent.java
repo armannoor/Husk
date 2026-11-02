@@ -28,5 +28,7 @@ public final class GnssMeasurementsEvent implements android.os.Parcelable {
     }
     public static abstract class Callback {
         protected Callback() {}
+        public void onGnssMeasurementsReceived(android.location.GnssMeasurementsEvent p0) {}
+        public void onStatusChanged(int p0) {}
     }
 }

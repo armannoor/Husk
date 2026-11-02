@@ -331,7 +331,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Fi
         return false;
     }
     void offsetChildrenTopAndBottom(int offset) { final int count = getChildCount(); for (int i = 0; i < count; i++) getChildAt(i).offsetTopAndBottom(offset); }
-    void detachViewsFromParent(int start, int count) { for (int i = start + count - 1; i >= start; i--) { View v = getChildAt(i); detachViewFromParent(i); if (v.isAttachedToWindow()) v.huskDetach(); } }
+    protected void detachViewsFromParent(int start, int count) { for (int i = start + count - 1; i >= start; i--) { View v = getChildAt(i); detachViewFromParent(i); if (v.isAttachedToWindow()) v.huskDetach(); } }
     public void scrollListBy(int y) { trackMotionScroll(-y, -y); }
     public boolean canScrollList(int direction) {
         final int childCount = getChildCount();

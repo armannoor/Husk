@@ -46,6 +46,7 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
     public AssetFileDescriptor openAssetFile(Uri u, String mode) throws java.io.FileNotFoundException { ParcelFileDescriptor fd = openFile(u, mode); return fd != null ? new AssetFileDescriptor(fd, 0, -1) : null; }
     public AssetFileDescriptor openAssetFile(Uri u, String mode, android.os.CancellationSignal c) throws java.io.FileNotFoundException { return openAssetFile(u, mode); }
     public AssetFileDescriptor openTypedAssetFile(Uri u, String mime, Bundle o) throws java.io.FileNotFoundException { return openAssetFile(u, "r"); }
+    public AssetFileDescriptor openTypedAssetFile(Uri u, String mime, Bundle o, android.os.CancellationSignal c) throws java.io.FileNotFoundException { return openTypedAssetFile(u, mime, o); }
     protected final ParcelFileDescriptor openFileHelper(Uri u, String mode) throws java.io.FileNotFoundException { throw new java.io.FileNotFoundException(u.toString()); }
     public <T> ParcelFileDescriptor openPipeHelper(Uri u, String mime, Bundle o, T args, PipeDataWriter<T> w) throws java.io.FileNotFoundException { throw new java.io.FileNotFoundException(u.toString()); }
     public String[] getStreamTypes(Uri u, String filter) { return null; }

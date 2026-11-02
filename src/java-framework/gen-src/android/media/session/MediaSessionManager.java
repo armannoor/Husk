@@ -68,7 +68,21 @@ public final class MediaSessionManager {
         void onDefaultRemoteSessionChanged(android.media.session.MediaSession.Token p0);
         void onVolumeChanged(android.media.session.MediaSession.Token p0, int p1);
     }
-    public static abstract class RemoteUserInfo {
-        protected RemoteUserInfo() {}
+    public static final class RemoteUserInfo {
+        private final String mPackageName;
+        private final int mPid;
+        private final int mUid;
+        public RemoteUserInfo(String packageName, int pid, int uid) { mPackageName = packageName; mPid = pid; mUid = uid; }
+        public RemoteUserInfo(String packageName, int pid, int uid, int userId) { this(packageName, pid, uid); }
+        public String getPackageName() { return mPackageName; }
+        public int getPid() { return mPid; }
+        public int getUid() { return mUid; }
+        public int hashCode() { return mPackageName == null ? 0 : mPackageName.hashCode(); }
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof RemoteUserInfo)) return false;
+            RemoteUserInfo r = (RemoteUserInfo) o;
+            return mPid == r.mPid && mUid == r.mUid && (mPackageName == null ? r.mPackageName == null : mPackageName.equals(r.mPackageName));
+        }
     }
 }

@@ -8,6 +8,9 @@ public class NinePatchDrawable extends Drawable {
     private final Paint mPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Rect mPadding;
     public NinePatchDrawable(Resources r, Bitmap b, byte[] chunk, Rect padding, String src) { mPatch = new NinePatch(b, chunk, src); mPadding = padding != null ? new Rect(padding) : new Rect(mPatch.padding); }
+    /** The nine-patch itself: apps that decoded it with NinePatch.isNinePatchChunk reuse it here. */
+    public NinePatchDrawable(Resources r, NinePatch patch) { mPatch = patch; mPadding = new Rect(patch.padding); }
+    @Deprecated public NinePatchDrawable(Bitmap b, byte[] chunk, Rect padding, String src) { this(null, b, chunk, padding, src); }
     public NinePatchDrawable(NinePatch p) { mPatch = p; mPadding = new Rect(p.padding); }
     @Override public void draw(Canvas c) { mPaint.setColorFilter(huskTintFilter()); mPatch.draw(c, getBounds(), mPaint); }
     @Override public boolean getPadding(Rect p) { p.set(mPadding); return (p.left | p.top | p.right | p.bottom) != 0; }

@@ -43,5 +43,12 @@ public abstract class CameraCaptureSession implements java.lang.AutoCloseable {
     }
     public static abstract class StateCallback {
         protected StateCallback() {}
+        public void onActive(android.hardware.camera2.CameraCaptureSession p0) {}
+        public void onCaptureQueueEmpty(android.hardware.camera2.CameraCaptureSession p0) {}
+        public void onClosed(android.hardware.camera2.CameraCaptureSession p0) {}
+        public void onConfigureFailed(android.hardware.camera2.CameraCaptureSession p0) {}
+        public void onConfigured(android.hardware.camera2.CameraCaptureSession p0) {}
+        public void onReady(android.hardware.camera2.CameraCaptureSession p0) {}
+        public void onSurfacePrepared(android.hardware.camera2.CameraCaptureSession p0, android.view.Surface p1) {}
     }
 }

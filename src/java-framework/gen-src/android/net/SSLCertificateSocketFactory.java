@@ -8,6 +8,10 @@ public class SSLCertificateSocketFactory extends javax.net.ssl.SSLSocketFactory 
     public static javax.net.SocketFactory getDefault(int p0) { return null; }
     public static javax.net.ssl.SSLSocketFactory getDefault(int p0, android.net.SSLSessionCache p1) { return null; }
     public static javax.net.ssl.SSLSocketFactory getInsecure(int p0, android.net.SSLSessionCache p1) { return null; }
+    /** The legacy Apache HTTP client's factory, over the platform default TLS factory. */
+    public static org.apache.http.conn.ssl.SSLSocketFactory getHttpSocketFactory(int p0, android.net.SSLSessionCache p1) {
+        return new org.apache.http.conn.ssl.SSLSocketFactory((javax.net.ssl.SSLSocketFactory) javax.net.ssl.SSLSocketFactory.getDefault());
+    }
     public static byte[] toLengthPrefixedList(byte[][] p0) { return null; }
     public static void verifyHostname(java.net.Socket p0, java.lang.String p1) {}
     public java.net.Socket createSocket() { return null; }

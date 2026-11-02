@@ -4,15 +4,25 @@ package android.graphics.pdf;
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public class PdfDocument {
     private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
+    private final java.util.List<Page> mPages = new java.util.ArrayList<>();
     public PdfDocument() {}
     public void close() {}
     protected void finalize() {}
     public void finishPage(android.graphics.pdf.PdfDocument.Page p0) {}
-    public java.util.List getPages() { return (huskProps.get("Pages") != null ? (java.util.List) huskProps.get("Pages") : new java.util.ArrayList()); }
-    public android.graphics.pdf.PdfDocument.Page startPage(android.graphics.pdf.PdfDocument.PageInfo p0) { return null; }
+    public java.util.List getPages() { return mPages; }
+    public android.graphics.pdf.PdfDocument.Page startPage(android.graphics.pdf.PdfDocument.PageInfo p0) {
+        android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(Math.max(1, p0.getPageWidth()), Math.max(1, p0.getPageHeight()), android.graphics.Bitmap.Config.ARGB_8888);
+        Page page = new Page(new android.graphics.Canvas(b), p0);
+        mPages.add(page);
+        return page;
+    }
     public void writeTo(java.io.OutputStream p0) {}
-    public static abstract class Page {
-        protected Page() {}
+    public static class Page {
+        private final android.graphics.Canvas mCanvas;
+        private final PageInfo mInfo;
+        Page(android.graphics.Canvas canvas, PageInfo info) { mCanvas = canvas; mInfo = info; }
+        public android.graphics.Canvas getCanvas() { return mCanvas; }
+        public PageInfo getInfo() { return mInfo; }
     }
     public static final class PageInfo {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();

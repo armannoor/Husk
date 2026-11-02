@@ -65,4 +65,39 @@ public class ViewDebug {
         private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
         protected ViewMethodInvocationSerializationException() { super(); }
     }
+    /** Marks a view property the hierarchy dump reads (ViewDebug.dumpCapturedView). */
+    @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target({java.lang.annotation.ElementType.FIELD, java.lang.annotation.ElementType.METHOD})
+    public @interface CapturedViewProperty {
+        boolean retrieveReturn() default false;
+        String expression() default "";
+    }
+    /** Marks a field or method the hierarchy dump exports, with the value's formatting. */
+    @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target({java.lang.annotation.ElementType.FIELD, java.lang.annotation.ElementType.METHOD})
+    public @interface ExportedProperty {
+        boolean resolveId() default false;
+        String category() default "";
+        boolean deepExport() default false;
+        String prefix() default "";
+        FlagToString[] flagMapping() default {};
+        IntToString[] indexMapping() default {};
+        IntToString[] mapping() default {};
+        boolean formatToHexString() default false;
+        boolean hasAdjacentMapping() default false;
+        @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
+        @java.lang.annotation.Target({})
+        @interface FlagToString {
+            int mask();
+            int equals();
+            String name();
+            boolean outputIf() default true;
+        }
+        @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
+        @java.lang.annotation.Target({})
+        @interface IntToString {
+            int from();
+            String to();
+        }
+    }
 }

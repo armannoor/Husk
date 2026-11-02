@@ -3,4 +3,13 @@ package android.content.pm;
 
 @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 public interface IPackageInstallerSession extends android.os.IInterface {
+    abstract class Stub extends android.os.Binder implements IPackageInstallerSession {
+        public static final String DESCRIPTOR = "android.content.pm.IPackageInstallerSession";
+        public static IPackageInstallerSession asInterface(android.os.IBinder b) {
+            if (b == null) return null;
+            android.os.IInterface local = b.queryLocalInterface(DESCRIPTOR);
+            return local instanceof IPackageInstallerSession ? (IPackageInstallerSession) local : new Stub() {};
+        }
+        public android.os.IBinder asBinder() { return this; }
+    }
 }

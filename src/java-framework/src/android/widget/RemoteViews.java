@@ -222,4 +222,8 @@ public class RemoteViews implements Parcelable, android.view.LayoutInflater.Filt
         RemoteViewOutlineProvider() { this((float) 0f); }
     }
     // ---- end of generated nested classes
+    /** Marks a method inside a RemoteViews action (the platform's restriction annotation). */
+    @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target({java.lang.annotation.ElementType.ANNOTATION_TYPE, java.lang.annotation.ElementType.METHOD})
+    public @interface RemoteView {}
 }

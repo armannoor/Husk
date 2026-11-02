@@ -2,6 +2,8 @@ package android.graphics;
 
 public final class Rect {
     public int left, top, right, bottom;
+    /** Hidden debug helper: this rect's fields, for the hierarchy dump's JSON. */
+    public java.util.Map getEfficiencyJsonFields() { return new java.util.HashMap(); }
     public Rect() {}
     public Rect(int l, int t, int r, int b) { set(l, t, r, b); }
     public Rect(Rect o) { if (o != null) set(o.left, o.top, o.right, o.bottom); }

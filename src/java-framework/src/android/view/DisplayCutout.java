@@ -4,6 +4,10 @@ public final class DisplayCutout {
     private final Rect mSafe;
     public DisplayCutout(Rect safeInsets, java.util.List<Rect> boundingRects) { mSafe = safeInsets == null ? new Rect() : new Rect(safeInsets); }
     public DisplayCutout(android.graphics.Insets safe, Rect l, Rect t, Rect r, Rect b) { mSafe = new Rect(safe.left, safe.top, safe.right, safe.bottom); }
+    /** Android 15's constructor: the safe insets, the four bounding rects and the waterfall insets. */
+    public DisplayCutout(android.graphics.Insets safe, Rect l, Rect t, Rect r, Rect b, android.graphics.Insets waterfall) {
+        mSafe = safe == null ? new Rect() : new Rect(safe.left, safe.top, safe.right, safe.bottom);
+    }
     public int getSafeInsetTop() { return mSafe.top; } public int getSafeInsetBottom() { return mSafe.bottom; }
     public int getSafeInsetLeft() { return mSafe.left; } public int getSafeInsetRight() { return mSafe.right; }
     public java.util.List<Rect> getBoundingRects() { return new java.util.ArrayList<>(); }

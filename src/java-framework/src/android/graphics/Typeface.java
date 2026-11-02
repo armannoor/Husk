@@ -92,6 +92,17 @@ public class Typeface {
     public static final class Builder {
         private byte[] data; private int weight = -1; private boolean italic; private String fallback;
         public Builder(java.io.File f) { try { data = java.nio.file.Files.readAllBytes(f.toPath()); } catch (java.io.IOException e) {} }
+        /** A face from a file descriptor (a font the app opened itself). The descriptor is the caller's: it is not closed. */
+        public Builder(java.io.FileDescriptor fd) {
+            try {
+                java.io.FileInputStream in = new java.io.FileInputStream(fd);
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[16384];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                data = out.toByteArray();
+            } catch (java.io.IOException e) {}
+        }
         public Builder(android.content.res.AssetManager m, String path) { data = husk.Native.readAsset(path); }
         public Builder setWeight(int w) { weight = w; return this; }
         public Builder setItalic(boolean i) { italic = i; return this; }

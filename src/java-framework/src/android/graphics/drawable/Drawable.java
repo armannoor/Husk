@@ -28,6 +28,8 @@ public abstract class Drawable {
     protected ColorFilter mColorFilter;
 
     public abstract void draw(Canvas c);
+    /** Whether the drawable draws outside its bounds (a shadow, a projection). Husk's software canvas does not project. */
+    public boolean isProjected() { return false; }
     public void setAlpha(int a) {}
     public int getAlpha() { return 255; }
     public void setColorFilter(ColorFilter f) { mColorFilter = f; }
