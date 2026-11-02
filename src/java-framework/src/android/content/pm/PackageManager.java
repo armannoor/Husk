@@ -270,7 +270,12 @@ public class PackageManager {
     public boolean isInstantApp() { return false; }
     public boolean isInstantApp(String pkg) { return false; }
     public boolean canRequestPackageInstalls() { return false; }
-    public PackageInstaller getPackageInstaller() { return null; }
+    /** The installer is a process-wide object on Android; apps store it and call it later, so never hand out null. */
+    public PackageInstaller getPackageInstaller() {
+        if (sPackageInstaller == null) sPackageInstaller = new PackageInstaller();
+        return sPackageInstaller;
+    }
+    private static PackageInstaller sPackageInstaller;
     public android.content.pm.ModuleInfo getModuleInfo(String pkg, int flags) throws NameNotFoundException { throw new NameNotFoundException(pkg); }
     public List<SharedLibraryInfo> getSharedLibraries(int flags) { return new ArrayList<>(); }
     public boolean isPackageSuspended() { return false; }
