@@ -12,6 +12,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "husk-tl-internal.h"
+
 void (*tl_cocos_audio_hook)(const int16_t *samples, int frames, int channels, int rate);
 
 void tl_audio_install(void)
@@ -23,3 +25,11 @@ bool tl_jit_reserve_bottom(size_t end)
     (void)end;
     return true;
 }
+
+/* Weak, so a link that has husk-tl-load.c (the real one, which finds the
+ * StikDebug window) keeps it, and the scanner-only link gets this. */
+__attribute__((weak)) tl_dual_mapping *tl_find_stikdebug_prewarmed(void)
+{
+    return NULL;
+}
+

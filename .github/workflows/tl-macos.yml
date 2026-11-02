@@ -60,6 +60,7 @@ jobs:
             -framework AudioToolbox
           clang -arch arm64 -O1 -g -o "$OUT/scan_cli" \
             tests/translation-layer/scan_cli.c \
+            tests/translation-layer/host_audio_stub.c \
             "$SRC"/husk-tl-json.c "$SRC"/husk-tl-zip.c "$SRC"/husk-tl-elf.c \
             "$SRC"/husk-tl-scan.c "$SRC"/husk-tl-probe.c \
             -I "$SRC" -lz
