@@ -274,7 +274,7 @@ jobs:
             TL_FRAMEWORK="$RUNNER_TEMP/build/husk-framework.dex" \
             TL_FRAMEWORK_RES="$RUNNER_TEMP/java-runtime/framework-res.apk" \
             TL_TMP="$RUNNER_TEMP/jdata" TL_DATA="$RUNNER_TEMP/jdata/$name" \
-              "$OUT/javaapp-test" "$apk" 20 > "$RUNNER_TEMP/$name.javaapp.log" 2>&1
+              perl -e 'alarm 120; exec @ARGV' "$OUT/javaapp-test" "$apk" 20 > "$RUNNER_TEMP/$name.javaapp.log" 2>&1
             rc=$?
             echo "  exit=$rc" | tee -a "$RUNNER_TEMP/javaapp.txt"
             tail -30 "$RUNNER_TEMP/$name.javaapp.log" | tee -a "$RUNNER_TEMP/javaapp.txt"
