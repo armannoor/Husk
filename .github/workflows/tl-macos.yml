@@ -236,13 +236,9 @@ jobs:
         run: |
           set -eux
           OUT="$RUNNER_TEMP/tl"; mkdir -p "$OUT"
-          # The Vorbis implementation lives in the milestone-1 sound engine; the
-          # Dalvik audio path only declares its header.
-          printf '#define STB_VORBIS_NO_STDIO\n#define STB_VORBIS_NO_PUSHDATA_API\n#include "stb_vorbis.inc"\n' \
-            > "$RUNNER_TEMP/stb_vorbis_impl.c"
           clang -arch arm64 -O1 -g -o "$OUT/javaapp-test" \
             tools/javaapp-test.c tests/translation-layer/host_audio_stub.c \
-            "$RUNNER_TEMP/stb_vorbis_impl.c" \
+            src/translation-layer/*.c \
             src/translation-layer-next/*.c src/translation-layer-next/*.m \
             -I src/translation-layer-next -I src/translation-layer \
             -fobjc-arc -lz -lsqlite3 -lresolv \
