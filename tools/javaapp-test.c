@@ -30,6 +30,7 @@
 #include "husk-tl-jni.h"
 #include "husk-tl-ld.h"
 
+#ifndef TL_HAVE_LOG_SINK
 void tl_log_line(const char *fmt, ...)
 {
     static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
@@ -43,6 +44,7 @@ void tl_log_line(const char *fmt, ...)
     va_end(ap);
     pthread_mutex_unlock(&m);
 }
+#endif
 
 static struct timespec g_start;                 /* when the run began (the quit summary) */
 

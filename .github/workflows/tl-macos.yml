@@ -237,6 +237,7 @@ jobs:
           set -eux
           OUT="$RUNNER_TEMP/tl"; mkdir -p "$OUT"
           clang -arch arm64 -O1 -g -o "$OUT/javaapp-test" \
+            -DTL_HAVE_LOG_SINK=1 \
             tools/javaapp-test.c tests/translation-layer/host_audio_stub.c \
             src/translation-layer/*.c \
             src/translation-layer-next/*.c src/translation-layer-next/*.m \
