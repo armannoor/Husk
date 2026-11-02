@@ -297,6 +297,12 @@ jobs:
             name=$(basename "$apk")
             secs=20
             case "$name" in *renpy-test*) secs=60 ;; esac
+            case "$name" in
+              *renpy-test*)
+                mkdir -p "$RUNNER_TEMP/jdata/$name/files"
+                cp tools/renpy-sitecustomize.py "$RUNNER_TEMP/jdata/$name/files/sitecustomize.py"
+                ;;
+            esac
             echo "=== $name" | tee -a "$RUNNER_TEMP/javaapp.txt"
             TL_ART="$ART" \
             TL_FRAMEWORK="$RUNNER_TEMP/build/husk-framework.dex" \
@@ -308,6 +314,16 @@ jobs:
             tail -30 "$RUNNER_TEMP/$name.javaapp.log" | tee -a "$RUNNER_TEMP/javaapp.txt"
           done
 
+      - name: Collect the guest Ren'Py logs
+        if: always()
+        run: |
+          set -ux
+          : > "$RUNNER_TEMP/guest-renpy.log"
+          find "$RUNNER_TEMP/jdata" -type f \( -name 'log*.txt' -o -name 'traceback.txt' \) -print -exec sh -c 'echo "----- $1"; cat "$1"' _ {} \; >> "$RUNNER_TEMP/guest-renpy.log" 2>&1 || true
+          echo "===== data tree" >> "$RUNNER_TEMP/guest-renpy.log"
+          find "$RUNNER_TEMP/jdata" -maxdepth 7 -type d >> "$RUNNER_TEMP/guest-renpy.log" 2>&1 || true
+          wc -c "$RUNNER_TEMP/guest-renpy.log"
+
       - name: Upload the framework and the report
         if: always()
         uses: actions/upload-artifact@v4
@@ -317,5 +333,6 @@ jobs:
             ${{ runner.temp }}/build/husk-framework.dex
             ${{ runner.temp }}/framework-gap.txt
             ${{ runner.temp }}/javaapp.txt
+            ${{ runner.temp }}/guest-renpy.log
             ${{ runner.temp }}/*.javaapp.log
           if-no-files-found: warn
