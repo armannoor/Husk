@@ -1,0 +1,150 @@
+name: Build an installable IPA
+
+# Rebuilds the Husk app (Swift + the translation layer's C) from this branch and
+# packages it with the binaries and resources of a published Husk.ipa: QEMU,
+# ANGLE, MoltenVK, the PS4 layer, the guest images and the Java runtime. Those
+# are hours of cross-compilation each, and none of the trees this branch touches
+# is one of them, so the published ones are reused unchanged.
+#
+# The result is ad-hoc signed. AltStore / SideStore / Sideloadly re-sign it at
+# install; TrollStore takes the .tipa, which leaves out the entitlements that
+# crash under PPL/TXM.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ipa_url:
+        description: Base IPA whose dylibs and resources are reused
+        required: false
+        default: https://github.com/Leviidev/Husk/releases/download/3.3/Husk.ipa
+      framework_dex:
+        description: Rebuild husk-framework.dex (and -core.dex) from this branch
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ipa:
+    runs-on: macos-26
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Toolchain
+        run: |
+          set -eux
+          brew install xcodegen
+          xcodegen --version
+          rustup target add aarch64-apple-ios
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Build the remote-pairing library
+        run: ./scripts/build_rppairing_ios.sh
+
+      - name: Fetch the base IPA
+        env:
+          BASE_URL: ${{ inputs.base_ipa_url }}
+        run: |
+          set -eux
+          mkdir -p "$RUNNER_TEMP/base"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/base.ipa" "$BASE_URL"
+          unzip -q "$RUNNER_TEMP/base.ipa" -d "$RUNNER_TEMP/base"
+          APP="$RUNNER_TEMP/base/Payload/Husk.app"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :HuskBuildCommit' "$APP/Info.plist" || true
+
+      - name: Stage the base IPA's binaries and resources
+        run: |
+          set -eux
+          APP="$RUNNER_TEMP/base/Payload/Husk.app"
+          mkdir -p build/ios-arm64/lib build/ios-arm64/sysroot/lib guests/phase0 \
+                   third_party/build/qemu-10.0.12-utm/pc-bios
+
+          # The app links QEMU and embeds the rest. ANGLE and MoltenVK are opened
+          # by path at run time; libhuskps4 is the PS4 console layer.
+          cp "$APP/Frameworks/libqemu-aarch64-softmmu.dylib" build/ios-arm64/lib/
+          cp "$APP/Frameworks/libhuskps4.dylib" build/ios-arm64/lib/
+          cp "$APP/Frameworks/libANGLE-shared.dylib" build/ios-arm64/sysroot/lib/
+
+          # project.yml names an xcframework, so rebuild the wrapper around the
+          # framework the base IPA ships.
+          mkdir -p build/ios-arm64/lib/MoltenVK.xcframework/ios-arm64
+          cp -R "$APP/Frameworks/MoltenVK.framework" build/ios-arm64/lib/MoltenVK.xcframework/ios-arm64/
+          cat > build/ios-arm64/lib/MoltenVK.xcframework/Info.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>AvailableLibraries</key>
+            <array>
+              <dict>
+                <key>LibraryIdentifier</key><string>ios-arm64</string>
+                <key>LibraryPath</key><string>MoltenVK.framework</string>
+                <key>SupportedArchitectures</key><array><string>arm64</string></array>
+                <key>SupportedPlatform</key><string>ios</string>
+              </dict>
+            </array>
+            <key>CFBundlePackageType</key><string>XFWK</string>
+            <key>XCFrameworkFormatVersion</key><string>1.0</string>
+          </dict>
+          </plist>
+          PLIST
+
+          # The app's build phase copies these into the bundle and validates them
+          # at packaging time.
+          cp "$APP/vmlinuz-virt" "$APP/initramfs-virt" guests/phase0/
+          cp "$APP"/pc-bios/*.rom third_party/build/qemu-10.0.12-utm/pc-bios/
+          bzip2 -c "$APP/edk2-aarch64-code.fd" \
+            > third_party/build/qemu-10.0.12-utm/pc-bios/edk2-aarch64-code.fd.bz2
+          rsync -a "$APP/android-system/" build/android-system/
+          rsync -a "$APP/java-runtime/" build/java-runtime/
+
+          # The build phase asks qemu-img for two sparse seeds. The base IPA
+          # already has the real ones and they are what gets shipped, so the
+          # build only needs files of the right shape.
+          mkdir -p "$RUNNER_TEMP/bin"
+          cat > "$RUNNER_TEMP/bin/qemu-img" <<'SH'
+          #!/bin/sh
+          for a in "$@"; do out="$a"; done
+          truncate -s 64M "$out"
+          SH
+          chmod +x "$RUNNER_TEMP/bin/qemu-img"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Rebuild the Java framework
+        if: ${{ inputs.framework_dex }}
+        run: |
+          set -eux
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/r8.jar" \
+            https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.5.35/r8-8.5.35.jar
+          HUSK_JDK="$JAVA_HOME" HUSK_D8="$RUNNER_TEMP/r8.jar" \
+            src/java-framework/build.sh build/java-runtime/husk-framework.dex
+          ls -l build/java-runtime/*.dex
+
+      - name: Build and package
+        run: |
+          set -eux
+          ./scripts/package_ipa.sh "$RUNNER_TEMP/Husk-tl.ipa"
+          ./scripts/package_ipa.sh --trollstore "$RUNNER_TEMP/Husk-tl.tipa"
+          ls -lh "$RUNNER_TEMP"/Husk-tl.*
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Husk-tl-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/Husk-tl.ipa
+            ${{ runner.temp }}/Husk-tl.tipa
+          if-no-files-found: error
