@@ -67,6 +67,8 @@ jobs:
           "$OUT/scan_cli" 2>&1 | head -20 || true
 
       - name: Fetch open-source APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eux
           mkdir -p "$RUNNER_TEMP/apks"
@@ -74,8 +76,15 @@ jobs:
           curl -fsSL --retry 3 -o fdroid.apk https://f-droid.org/F-Droid.apk
           # Termux: a Java activity around a large arm64 native library, so it
           # exercises the ELF loader and the bionic shim as well as the DVM.
-          url=$(curl -fsSL https://api.github.com/repos/termux/termux-app/releases/latest \
-                | python3 -c 'import json,sys; a=json.load(sys.stdin)["assets"]; print(next(x["browser_download_url"] for x in a if "arm64-v8a" in x["name"] and x["name"].endswith(".apk")))')
+          # The API is rate-limited on shared runner IPs; the token raises the
+          # limit, and the pinned asset is the fallback if it still refuses.
+          url=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+                https://api.github.com/repos/termux/termux-app/releases/latest \
+                | python3 -c 'import json,sys; a=json.load(sys.stdin)["assets"]; print(next(x["browser_download_url"] for x in a if "arm64-v8a" in x["name"] and x["name"].endswith(".apk")))' \
+                || true)
+          if [ -z "$url" ]; then
+            url='https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3%2Bgithub-debug_arm64-v8a.apk'
+          fi
           curl -fsSL --retry 3 -o termux.apk "$url"
           ls -l
 
