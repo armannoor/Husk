@@ -16,7 +16,7 @@
 
 void (*tl_cocos_audio_hook)(const int16_t *samples, int frames, int channels, int rate);
 
-void tl_audio_install(void)
+__attribute__((weak)) void tl_audio_install(void)
 {
 }
 
