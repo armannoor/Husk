@@ -33,6 +33,7 @@ bool tl_ld_covers(const void *addr, size_t bytes);
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/file.h>
 #include <sys/ioctl.h>
 #include <xlocale.h>
@@ -762,7 +763,75 @@ static int b_access(const char *p, int m) { char b[1024]; jar_entry jar; if (jar
 static int b_chmod(const char *p, unsigned m) { char b[1024]; TL_ERRNO_BEGIN(); int r = chmod(tl_path_resolve(p, b, sizeof(b)), (mode_t)m); TL_ERRNO_END(); return r; }
 static int b_fchmod(int fd, unsigned m) { TL_ERRNO_BEGIN(); int r = fchmod(fd, (mode_t)m); TL_ERRNO_END(); return r; }
 static int b_link(const char *a, const char *b2) { char x[1024], y[1024]; TL_ERRNO_BEGIN(); int r = link(tl_path_resolve(a, x, sizeof(x)), tl_path_resolve(b2, y, sizeof(y))); TL_ERRNO_END(); return r; }
-static int b_symlink(const char *a, const char *b2) { char y[1024]; TL_ERRNO_BEGIN(); int r = symlink(a, tl_path_resolve(b2, y, sizeof(y))); int e = errno; if (r != 0) { struct stat s; const char *why = lstat(y, &s) != 0 ? "missing" : S_ISDIR(s.st_mode) ? "a directory" : S_ISLNK(s.st_mode) ? "a symlink" : "a file"; tl_log_line("symlink: %s <- %s failed (errno %d; link path is %s)", y, a, e, why); } errno = e; TL_ERRNO_END(); return r; }
+
+/*
+ * Android's filesystems are case-sensitive; an APFS or exFAT app folder is not. A guest only finds out when it asks
+ * for a name that differs from an existing one by case, so the probe lives here. Termux's bootstrap ships both
+ * share/man/man3/window.3ncurses.gz and a WINDOW.3ncurses.gz alias, and without this the whole install aborts.
+ */
+static bool host_case_insensitive(void)
+{
+    static int cached = -1;
+    if (cached >= 0) return cached != 0;
+    const char *dd = tl_data_dir();
+    if (!dd || !dd[0]) return false;
+    char lower[1024], upper[1024];
+    snprintf(lower, sizeof(lower), "%s/.husk-case-probe", dd);
+    snprintf(upper, sizeof(upper), "%s/.HUSK-CASE-PROBE", dd);
+    FILE *f = fopen(lower, "wb");
+    if (!f) return false;
+    fputc('x', f);
+    fclose(f);
+    struct stat st;
+    bool insensitive = stat(upper, &st) == 0;
+    unlink(lower);
+    cached = insensitive ? 1 : 0;
+    return insensitive;
+}
+
+/* True when another entry in the same folder is equal to the last component except for case. */
+static bool case_only_sibling(const char *path)
+{
+    const char *slash = strrchr(path, '/');
+    if (!slash || !slash[1]) return false;
+    char dir[1024];
+    size_t n = (size_t)(slash - path);
+    if (n >= sizeof(dir)) return false;
+    memcpy(dir, path, n);
+    dir[n] = 0;
+    DIR *d = opendir(dir);
+    if (!d) return false;
+    bool found = false;
+    struct dirent *e;
+    while (!found && (e = readdir(d))) {
+        if (strcasecmp(e->d_name, slash + 1) == 0 && strcmp(e->d_name, slash + 1) != 0) found = true;
+    }
+    closedir(d);
+    return found;
+}
+
+static int b_symlink(const char *a, const char *b2)
+{
+    char y[1024];
+    TL_ERRNO_BEGIN();
+    int r = symlink(a, tl_path_resolve(b2, y, sizeof(y)));
+    int e = errno;
+    if (r != 0) {
+        /* Android would have two names here; the host has one. Keep the file that exists and skip the alias
+         * instead of failing the caller, which for an installer means aborting everything. */
+        if (e == EEXIST && host_case_insensitive() && case_only_sibling(y)) {
+            tl_log_line("symlink: %s <- %s skipped: a file whose name differs only in case exists on this filesystem", y, a);
+            errno = 0;
+            return 0;
+        }
+        struct stat s;
+        const char *why = lstat(y, &s) != 0 ? "missing" : S_ISDIR(s.st_mode) ? "a directory" : S_ISLNK(s.st_mode) ? "a symlink" : "a file";
+        tl_log_line("symlink: %s <- %s failed (errno %d; link path is %s)", y, a, e, why);
+    }
+    errno = e;
+    TL_ERRNO_END();
+    return r;
+}
 static bool is_proc_exe(const char *p) { return p && (!strcmp(p, "/proc/self/exe") || (!strncmp(p, "/proc/", 6) && strstr(p, "/exe") && strlen(strstr(p, "/exe")) == 4)); }
 static long b_readlink(const char *p, char *buf, size_t n)
 {
