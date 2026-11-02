@@ -108,7 +108,7 @@ def _patch_script(script):
             import renpy as _r
 
             _diag("loader.common_files=%d apks=%d", len(_r.loader.common_files), len(_r.loader.apks))
-        return orig_load_module(name)
+        return orig_load_module(self, name)
 
     script.Script.load_module = load_module
 
