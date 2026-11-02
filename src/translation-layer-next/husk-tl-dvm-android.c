@@ -900,6 +900,7 @@ static void *gl_main(void *arg)
 {
     (void)arg;
     pthread_setname_np("GLThread");
+    if (!tl_egl_available()) { tl_log_line("javaapp: EGL is not available (no ANGLE); the views run without a GL thread"); return NULL; }
     EGLDisplay (*getDisplay)(void *) = tl_egl_resolve("eglGetDisplay");
     unsigned (*initialize)(EGLDisplay, EGLint *, EGLint *) = tl_egl_resolve("eglInitialize");
     unsigned (*bindAPI)(unsigned) = tl_egl_resolve("eglBindAPI");

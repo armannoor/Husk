@@ -30,6 +30,8 @@ extern "C" {
 void tl_egl_es31_shim(bool on);
 void tl_egl_offscreen_windows(bool on);     /* window surfaces are off-screen buffers: the layer belongs to another API (Vulkan) */
 bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_dir, int frame_every);
+/* Whether ANGLE was loaded: without it the EGL names resolve to husk's internal stubs, which cannot make a context. */
+bool tl_egl_available(void);
 
 /* The address of a GLES/EGL function by name, adapters first, or NULL. */
 void *tl_egl_resolve(const char *name);

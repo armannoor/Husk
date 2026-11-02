@@ -111,6 +111,7 @@ bool tl_egl_init(const char *egl_path, const char *gles_path, const char *frame_
 }
 
 unsigned long tl_egl_frames_presented(void) { return atomic_load(&E.presented); }
+bool tl_egl_available(void) { return E.ready; }
 
 /* ------------------------------------------------------------ EGL wrappers */
 
