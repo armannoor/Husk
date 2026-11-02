@@ -187,7 +187,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -196,8 +196,8 @@ jobs:
         run: |
           set -eux
           mkdir -p "$RUNNER_TEMP/build"
-          curl -fsSL --retry 3 -o "$RUNNER_TEMP/r8.jar" \
-            https://maven.google.com/com.android.tools/r8/8.5.35/r8-8.5.35.jar
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/r8.jar" \
+            https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.5.35/r8-8.5.35.jar
           HUSK_JDK="$JAVA_HOME" HUSK_D8="$RUNNER_TEMP/r8.jar" \
             src/java-framework/build.sh "$RUNNER_TEMP/build/husk-framework.dex"
           ls -l "$RUNNER_TEMP/build"
