@@ -299,9 +299,14 @@ jobs:
             case "$name" in *renpy-test*) secs=60 ;; esac
             case "$name" in
               *renpy-test*)
-                mkdir -p "$RUNNER_TEMP/jdata/$name/files"
+                mkdir -p "$RUNNER_TEMP/jdata/$name/files/lib/python3.12"
+                mkdir -p "$RUNNER_TEMP/renpyhook"
                 cp tools/renpy-sitecustomize.py "$RUNNER_TEMP/jdata/$name/files/sitecustomize.py"
+                cp tools/renpy-sitecustomize.py "$RUNNER_TEMP/jdata/$name/files/lib/python3.12/sitecustomize.py"
+                cp tools/renpy-sitecustomize.py "$RUNNER_TEMP/renpyhook/sitecustomize.py"
                 cp tools/renpy-environment.txt "$RUNNER_TEMP/jdata/$name/files/environment.txt"
+                export PYTHONPATH="$RUNNER_TEMP/renpyhook"
+                export PYTHONVERBOSE=1
                 ;;
             esac
             echo "=== $name" | tee -a "$RUNNER_TEMP/javaapp.txt"
@@ -313,6 +318,7 @@ jobs:
             rc=$?
             echo "  exit=$rc" | tee -a "$RUNNER_TEMP/javaapp.txt"
             tail -30 "$RUNNER_TEMP/$name.javaapp.log" | tee -a "$RUNNER_TEMP/javaapp.txt"
+            unset PYTHONPATH PYTHONVERBOSE
           done
 
       - name: Collect the guest Ren'Py logs

@@ -19,6 +19,20 @@ def _patch_loader(loader):
     orig_find = loader.find_apks
 
     def find_apks():
+        import renpy as _r
+
+        print(
+            "HUSK_DIAG pre find_apks renpy_base=%r basedir=%r android=%r private=%r apk=%r"
+            % (
+                getattr(_r.config, "renpy_base", None),
+                getattr(_r.config, "basedir", None),
+                getattr(_r, "android", None),
+                __import__("os").environ.get("ANDROID_PRIVATE"),
+                __import__("os").environ.get("ANDROID_APK"),
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
         orig_find()
         print(
             "HUSK_DIAG find_apks apks=%d prefixes=%r"
