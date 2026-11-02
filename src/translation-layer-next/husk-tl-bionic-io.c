@@ -296,6 +296,22 @@ const char *tl_path_resolve(const char *path, char *buf, size_t n)
         }
         return buf;
     }
+    /* The host's own system folder. Android has a lowercase /system partition, whose few files Husk needs are emulated above; it
+     * has no /System and nothing named Library/, Applications/ or Volumes/. On a case-insensitive disk (APFS, NTFS) /System and
+     * /system are one directory, so a guest probing for the host's files would find them: CPython's platform.mac_ver() reads
+     * /System/Library/CoreServices/SystemVersion.plist, finds the Mac's version, and Ren'Py then takes itself for a desktop game
+     * instead of an Android one -- and stops looking for its assets inside the APK. Answer for either spelling the way Android
+     * would, with no such file. The rewritten path runs into /dev/null, a file and never a folder, so nothing can be created
+     * through it. */
+    {
+        size_t i = 0;
+        while (path[i] == '/') i++;
+        if (!strncasecmp(path + i, "system", 6) && (path[i + 6] == 0 || path[i + 6] == '/')) {
+            const char *suffix = path + i + 6;
+            snprintf(buf, n, "/dev/null%s", suffix[0] ? suffix : "/.");
+            return buf;
+        }
+    }
     return path;
 }
 

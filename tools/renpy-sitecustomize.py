@@ -29,6 +29,16 @@ try:
         file=sys.stderr,
         flush=True,
     )
+
+    import platform as _platform
+
+    _plist = "/System/Library/CoreServices/SystemVersion.plist"
+    print(
+        "HUSK_DIAG platform sys.platform=%r mac_ver=%r plist_visible=%r"
+        % (sys.platform, _platform.mac_ver(), _os.path.exists(_plist)),
+        file=sys.stderr,
+        flush=True,
+    )
 except Exception as _e:  # noqa: BLE001
     print("HUSK_DIAG startup probe failed: %r" % (_e,), file=sys.stderr, flush=True)
 
