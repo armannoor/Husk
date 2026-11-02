@@ -145,7 +145,7 @@ bool tl_renpy_prepare(const char *apk, const char *data_dir, const char *package
         f = fopen(stamp_path, "w");
         if (f) { fputs(stamp, f); fclose(f); }
     }
-    char pub[1200], old[1200];
+    char pub[1200], old[1200], pyhome[2400];
     snprintf(pub, sizeof(pub), "%s/sdcard/Android/data/%s/files", data_dir, package_name ? package_name : "");
     snprintf(old, sizeof(old), "%s/sdcard/%s", data_dir, package_name ? package_name : "");
     mkdirs(pub);
@@ -156,6 +156,11 @@ bool tl_renpy_prepare(const char *apk, const char *data_dir, const char *package
     setenv("ANDROID_PUBLIC", pub, 1);
     setenv("ANDROID_OLD_PUBLIC", old, 1);
     setenv("ANDROID_APK", apk, 1);
+    /* The private.mp3 archive puts CPython's library under files/lib/python3.12, and renpy/ + main.py
+       at the root. Point the interpreter there; librenpython's own bootstrap may set these too. */
+    snprintf(pyhome, sizeof(pyhome), "%s/lib/python3.12:%s/lib/python3.12/lib-dynload:%s", files, files, files);
+    setenv("PYTHONHOME", files, 1);
+    setenv("PYTHONPATH", pyhome, 1);
     tl_log_line("renpy: ANDROID_PRIVATE=%s", files);
     return true;
 }
