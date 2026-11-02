@@ -231,6 +231,16 @@ jobs:
             --framework "$RUNNER_TEMP/build/husk-framework.dex" \
             "$RUNNER_TEMP"/apks/*.apk | tee "$RUNNER_TEMP/framework-gap.txt"
 
+      - name: Test the Ren'Py preparePython contract
+        run: |
+          set -eux
+          python3 tools/make-fake-renpy-apk.py "$RUNNER_TEMP/renpy-fake.apk" "$RUNNER_TEMP/plain.apk"
+          clang -arch arm64 -O1 -g -o "$RUNNER_TEMP/renpy-prepare-test" \
+            tools/renpy-prepare-test.c src/translation-layer-next/husk-tl-python.c \
+            src/translation-layer/husk-tl-zip.c \
+            -I src/translation-layer-next -I src/translation-layer -lz
+          "$RUNNER_TEMP/renpy-prepare-test" "$RUNNER_TEMP/renpy-fake.apk" "$RUNNER_TEMP/renpy-data"
+
       - name: Build the Java-app harness
         continue-on-error: true
         run: |
