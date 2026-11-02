@@ -61,7 +61,7 @@ jobs:
 
       - name: Fetch the base IPA
         env:
-          BASE_URL: ${{ inputs.base_ipa_url }}
+          BASE_URL: "${{ inputs.base_ipa_url || 'https://github.com/Leviidev/Husk/releases/download/3.3/Husk.ipa' }}"
         run: |
           set -eux
           mkdir -p "$RUNNER_TEMP/base"
@@ -130,7 +130,7 @@ jobs:
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - name: Rebuild the Java framework
-        if: ${{ inputs.framework_dex }}
+        if: ${{ github.event_name == 'push' || inputs.framework_dex }}
         run: |
           set -eux
           curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/r8.jar" \
