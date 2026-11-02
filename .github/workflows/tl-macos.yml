@@ -1,0 +1,170 @@
+name: Translation layer on macOS
+
+# The translation layer is ordinary C that runs on arm64 XNU. An Apple Silicon
+# macOS runner has the same 16 KiB pages, MAP_JIT and thread pointer the phone
+# has, so the loader, the ELF mapping, the JNI bridge and the Dalvik
+# interpreter can be built and driven here before an IPA exists.
+#
+# What this proves: the layer compiles for iOS and runs an APK end to end on a
+# Mac. What it cannot prove: Metal/UIKit presentation, entitlements, and
+# anything that needs a real device (see docs/04-translation-layer.md).
+
+on:
+  push:
+    branches: [main, "ci/**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      apk_urls:
+        description: "Extra APK URLs, one per line (optional)"
+        required: false
+        type: string
+      seconds:
+        description: "Seconds to run each APK"
+        required: false
+        default: "8"
+
+concurrency:
+  group: tl-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Build and run the layer (macOS arm64)
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          uname -m
+          clang --version
+          python3 --version
+
+      - name: Build the attempt harness and the scanner
+        run: |
+          set -eux
+          OUT="$RUNNER_TEMP/tl"
+          mkdir -p "$OUT"
+          SRC=src/translation-layer
+          # Every file under src/translation-layer is Husk's own runtime; the
+          # harness supplies the Mach side (tests/translation-layer/attempt_host.c).
+          clang -arch arm64 -O1 -g -Wall -Wno-unused-parameter -o "$OUT/attempt_host" \
+            tests/translation-layer/attempt_host.c \
+            "$SRC"/*.c \
+            -I "$SRC" -lz \
+            -framework Foundation -framework CoreGraphics -framework ImageIO \
+            -framework AudioToolbox
+          clang -arch arm64 -O1 -g -o "$OUT/scan_cli" \
+            tests/translation-layer/scan_cli.c \
+            "$SRC"/husk-tl-json.c "$SRC"/husk-tl-zip.c "$SRC"/husk-tl-elf.c \
+            "$SRC"/husk-tl-scan.c "$SRC"/husk-tl-probe.c \
+            -I "$SRC" -lz
+          "$OUT/scan_cli" 2>&1 | head -20 || true
+
+      - name: Fetch open-source APKs
+        run: |
+          set -eux
+          mkdir -p "$RUNNER_TEMP/apks"
+          cd "$RUNNER_TEMP/apks"
+          curl -fsSL --retry 3 -o fdroid.apk https://f-droid.org/F-Droid.apk
+          # Termux: a Java activity around a large arm64 native library, so it
+          # exercises the ELF loader and the bionic shim as well as the DVM.
+          url=$(curl -fsSL https://api.github.com/repos/termux/termux-app/releases/latest \
+                | python3 -c 'import json,sys; a=json.load(sys.stdin)["assets"]; print(next(x["browser_download_url"] for x in a if "arm64-v8a" in x["name"] and x["name"].endswith(".apk")))')
+          curl -fsSL --retry 3 -o termux.apk "$url"
+          ls -l
+
+      - name: Extra APKs from the workflow input
+        if: ${{ inputs.apk_urls != '' }}
+        env:
+          APK_URLS: ${{ inputs.apk_urls }}
+        run: |
+          set -eux
+          cd "$RUNNER_TEMP/apks"
+          i=0
+          printf '%s\n' "$APK_URLS" | while IFS= read -r u; do
+            [ -n "$u" ] || continue
+            i=$((i+1))
+            curl -fsSL --retry 3 -o "extra-$i.apk" "$u"
+          done
+          ls -l
+
+      - name: Scan every APK
+        run: |
+          set -ux
+          OUT="$RUNNER_TEMP/tl"
+          mkdir -p "$RUNNER_TEMP/report"
+          for apk in "$RUNNER_TEMP"/apks/*.apk; do
+            name=$(basename "$apk")
+            echo "=== $name" | tee -a "$RUNNER_TEMP/report/scan.txt"
+            "$OUT/scan_cli" scan "$apk" > "$RUNNER_TEMP/report/$name.scan.json" 2>&1 || true
+            python3 - "$RUNNER_TEMP/report/$name.scan.json" <<'PY' | tee -a "$RUNNER_TEMP/report/scan.txt"
+          import json, sys
+          try:
+              j = json.load(open(sys.argv[1]))
+          except Exception as e:
+              print("  unreadable:", e)
+              sys.exit(0)
+          if not isinstance(j, dict):
+              print("  unexpected:", type(j).__name__)
+              sys.exit(0)
+          print("  engine=%s dex=%s abis=%s verdict=%s"
+                % (j.get("engine"), j.get("dexCount"), j.get("abis"), j.get("verdict")))
+          PY
+          done
+
+      - name: Run every APK through the layer
+        run: |
+          set -ux
+          OUT="$RUNNER_TEMP/tl"
+          SECS="${{ inputs.seconds }}"
+          SECS="${SECS:-8}"
+          mkdir -p "$RUNNER_TEMP/report"
+          for apk in "$RUNNER_TEMP"/apks/*.apk; do
+            name=$(basename "$apk")
+            echo "=== $name" | tee -a "$RUNNER_TEMP/report/run.txt"
+            "$OUT/attempt_host" "$apk" "$SECS" > "$RUNNER_TEMP/report/$name.log" 2>&1
+            rc=$?
+            echo "  exit=$rc" | tee -a "$RUNNER_TEMP/report/run.txt"
+            tail -25 "$RUNNER_TEMP/report/$name.log" | tee -a "$RUNNER_TEMP/report/run.txt"
+          done
+          exit 0
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tl-macos-report
+          path: ${{ runner.temp }}/report
+          if-no-files-found: warn
+
+  ios-compile:
+    name: Compile for iOS (arm64)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Compile every translation-layer source for the device SDK
+        run: |
+          set -eux
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          TARGET=arm64-apple-ios15.5
+          mkdir -p "$RUNNER_TEMP/obj"
+          for f in src/translation-layer/*.c src/translation-layer/*.m \
+                   src/translation-layer-next/*.c src/translation-layer-next/*.m; do
+            [ -e "$f" ] || continue
+            o="$RUNNER_TEMP/obj/$(basename "$f").o"
+            clang -target "$TARGET" -isysroot "$SDK" -O0 -g0 -c "$f" -o "$o" \
+              -I src/translation-layer -I src/translation-layer-next \
+              -fobjc-arc -Wno-deprecated-declarations
+          done
+          echo "compiled $(ls "$RUNNER_TEMP/obj" | wc -l) objects"
