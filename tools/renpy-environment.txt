@@ -1,0 +1,141 @@
+try:
+    import builtins as _b
+
+    def _install(_b=_b):
+        import sys as _s
+        import os as _o
+
+        def _diag(msg, *args):
+            try:
+                _s.stderr.write("HUSK_DIAG " + (msg % args if args else msg) + "\n")
+                _s.stderr.flush()
+            except Exception:
+                pass
+
+        def _patch_loader(L):
+            if getattr(L, "_husk_diag", False):
+                return
+            L._husk_diag = True
+
+            orig_find = L.find_apks
+
+            def find_apks(_orig=orig_find):
+                import renpy as _r
+
+                _diag(
+                    "pre find_apks renpy_base=%r basedir=%r android=%r private=%r apk=%r",
+                    getattr(_r.config, "renpy_base", None),
+                    getattr(_r.config, "basedir", None),
+                    getattr(_r, "android", None),
+                    _o.environ.get("ANDROID_PRIVATE"),
+                    _o.environ.get("ANDROID_APK"),
+                )
+                rv = _orig()
+                _diag(
+                    "post find_apks apks=%d prefixes=%r game_apks=%d",
+                    len(L.apks),
+                    [getattr(a, "prefix", None) for a in L.apks],
+                    len(L.game_apks),
+                )
+                return rv
+
+            L.find_apks = find_apks
+
+            orig_scan = getattr(L, "scandirfiles_from_apk", None)
+
+            if orig_scan is not None:
+
+                def scandirfiles_from_apk(add, seen, _orig=orig_scan):
+                    _orig(add, seen)
+                    _diag(
+                        "scan_apks common=%d game=%d has_eh=%r first=%r",
+                        len(L.common_files),
+                        len(L.game_files),
+                        any(n == "_errorhandling.rpymc" for _, n in L.common_files),
+                        L.common_files[:2],
+                    )
+
+                L.scandirfiles_callbacks = [
+                    scandirfiles_from_apk if c is orig_scan else c
+                    for c in L.scandirfiles_callbacks
+                ]
+
+            orig_idx = L.index_files
+
+            def index_files(_orig=orig_idx):
+                _diag("index_files: callbacks=%r", [getattr(c, "__name__", c) for c in L.scandirfiles_callbacks])
+                rv = _orig()
+                _diag(
+                    "index_files done: common=%d game=%d apks=%d",
+                    len(L.common_files),
+                    len(L.game_files),
+                    len(L.apks),
+                )
+                return rv
+
+            L.index_files = index_files
+
+        def _patch_script(S):
+            if getattr(S, "_husk_diag", False):
+                return
+            S._husk_diag = True
+
+            orig_scan = S.Script.scan_script_files
+
+            def scan_script_files(self, _orig=orig_scan):
+                rv = _orig(self)
+                import renpy as _r
+
+                _diag(
+                    "scan_script_files: common_files=%d module_files=%d has_eh=%r scripts=%d common_scripts=%d",
+                    len(_r.loader.common_files),
+                    len(self.module_files),
+                    any(n == "_errorhandling" for n, _ in self.module_files),
+                    len(self.script_files),
+                    len(self.common_script_files),
+                )
+                _diag("  modules=%r", [n for n, _ in self.module_files][:12])
+                _diag("  game_scripts=%r", [n for n, _ in self.script_files][:8])
+                _diag("  loadable eh=%r", _r.loader.loadable("_errorhandling.rpymc"))
+                return rv
+
+            S.Script.scan_script_files = scan_script_files
+
+            orig_load_module = S.Script.load_module
+
+            def load_module(self, name, _orig=orig_load_module):
+                files = [(fn, dir) for fn, dir in self.module_files if fn == name]
+                _diag("load_module(%r) files=%r", name, files[:4])
+                if not files:
+                    _diag("  module_files=%r", [n for n, _ in self.module_files][:20])
+                return _orig(name)
+
+            S.Script.load_module = load_module
+
+        def _hook(name, globals=None, locals=None, fromlist=(), level=0, _real=_b.__import__):
+            m = _real(name, globals, locals, fromlist, level)
+
+            try:
+                L = _s.modules.get("renpy.loader")
+                if L is not None and (name == "renpy.loader" or (fromlist and "loader" in fromlist)):
+                    _patch_loader(L)
+                S = _s.modules.get("renpy.script")
+                if S is not None and (name == "renpy.script" or (fromlist and "script" in fromlist)):
+                    _patch_script(S)
+            except Exception as e:
+                _diag("hook error: %r", e)
+
+            return m
+
+        _b.__import__ = _hook
+
+    _install()
+    for _k in ("__builtins__", "_install", "_b"):
+        globals().pop(_k, None)
+except Exception as _e:
+    import sys as _sys
+
+    _sys.stderr.write("HUSK_DIAG environment.txt failed: %r\n" % (_e,))
+    _sys.stderr.flush()
+    for _k in ("__builtins__", "_e", "_sys", "_k"):
+        globals().pop(_k, None)

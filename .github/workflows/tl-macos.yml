@@ -301,6 +301,7 @@ jobs:
               *renpy-test*)
                 mkdir -p "$RUNNER_TEMP/jdata/$name/files"
                 cp tools/renpy-sitecustomize.py "$RUNNER_TEMP/jdata/$name/files/sitecustomize.py"
+                cp tools/renpy-environment.txt "$RUNNER_TEMP/jdata/$name/files/environment.txt"
                 ;;
             esac
             echo "=== $name" | tee -a "$RUNNER_TEMP/javaapp.txt"
