@@ -56,6 +56,16 @@ jobs:
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
 
+      - name: Inspect the SDK
+        run: |
+          set -eux
+          ls /Applications | grep -i xcode || true
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          IFACE="$SDK/System/Library/Frameworks/SwiftUI.framework/Modules/SwiftUI.swiftmodule/arm64-apple-ios.swiftinterface"
+          if [ -f "$IFACE" ]; then
+            grep -n -B4 -A2 'func buildIf' "$IFACE" | head -60 || true
+          fi
+
       - name: Build the remote-pairing library
         run: ./scripts/build_rppairing_ios.sh
 
@@ -142,6 +152,15 @@ jobs:
       - name: Build and package
         run: |
           set -eux
+          # Xcode 26.6's SwiftUI marks the ViewBuilder/ToolbarContentBuilder
+          # `buildIf` helpers as iOS 16, so a 15.5 target cannot compile the
+          # views. Build for 16.0; the extension target keeps its own 26.0.
+          python3 - <<'PY'
+          p = "src/app/project.yml"
+          s = open(p).read()
+          assert 'iOS: "15.5"' in s
+          open(p, "w").write(s.replace('iOS: "15.5"', 'iOS: "16.0"', 1))
+          PY
           ./scripts/package_ipa.sh "$RUNNER_TEMP/Husk-tl.ipa"
           ./scripts/package_ipa.sh --trollstore "$RUNNER_TEMP/Husk-tl.tipa"
           ls -lh "$RUNNER_TEMP"/Husk-tl.*
