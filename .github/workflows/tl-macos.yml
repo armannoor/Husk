@@ -240,7 +240,7 @@ jobs:
             tools/javaapp-test.c tests/translation-layer/host_audio_stub.c \
             src/translation-layer-next/*.c src/translation-layer-next/*.m \
             -I src/translation-layer-next -I src/translation-layer \
-            -fobjc-arc -lz \
+            -fobjc-arc -lz -lsqlite3 -lresolv \
             -framework Foundation -framework CoreFoundation -framework CoreGraphics \
             -framework CoreText -framework ImageIO -framework AudioToolbox \
             -framework Security -framework Metal -framework QuartzCore \
@@ -251,6 +251,7 @@ jobs:
         continue-on-error: true
         run: |
           set -ux
+          set +e
           OUT="$RUNNER_TEMP/tl"
           ART="$RUNNER_TEMP/java-runtime/com.android.art"
           mkdir -p "$RUNNER_TEMP/jdata"
