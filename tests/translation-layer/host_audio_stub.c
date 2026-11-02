@@ -20,7 +20,7 @@ __attribute__((weak)) void tl_audio_install(void)
 {
 }
 
-bool tl_jit_reserve_bottom(size_t end)
+__attribute__((weak)) bool tl_jit_reserve_bottom(size_t end)
 {
     (void)end;
     return true;
