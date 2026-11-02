@@ -53,12 +53,13 @@ static bool file_has(const char *path, const char *needle)
 
 int main(int argc, char **argv)
 {
-    if (argc != 3) {
-        fprintf(stderr, "usage: %s <apk> <data-dir>\n", argv[0]);
+    if (argc != 3 && argc != 4) {
+        fprintf(stderr, "usage: %s <apk> <data-dir> [python-version]\n", argv[0]);
         return 2;
     }
     const char *apk = argv[1], *data = argv[2];
-    char files[1024], path[1200];
+    const char *version = argc == 4 ? argv[3] : "3.12";
+    char files[1024], path[1200], rel[96], dyn[112];
 
     check(tl_renpy_prepare(apk, data, "org.example.renpy"), "prepare returns true for a Ren'Py APK");
 
@@ -67,8 +68,9 @@ int main(int argc, char **argv)
     check(file_has(path, "RENPY_MAIN_MARKER"), "main.py unpacked");
     snprintf(path, sizeof(path), "%s/renpy/__init__.py", files);
     check(file_has(path, NULL), "renpy/__init__.py unpacked");
-    snprintf(path, sizeof(path), "%s/lib/python3.12/os.py", files);
-    check(file_has(path, "PYTHON_STDLIB_MARKER"), "lib/python3.12/os.py unpacked");
+    snprintf(rel, sizeof(rel), "lib/python%s/os.py", version);
+    snprintf(path, sizeof(path), "%s/%s", files, rel);
+    check(file_has(path, "PYTHON_STDLIB_MARKER"), "the CPython stdlib is unpacked");
 
     check(getenv("ANDROID_PRIVATE") && !strcmp(getenv("ANDROID_PRIVATE"), files), "ANDROID_PRIVATE points at files/");
     snprintf(path, sizeof(path), "%s/sdcard/Android/data/org.example.renpy/files", data);
@@ -77,7 +79,8 @@ int main(int argc, char **argv)
     check(getenv("ANDROID_OLD_PUBLIC") && !strcmp(getenv("ANDROID_OLD_PUBLIC"), path), "ANDROID_OLD_PUBLIC points at the old layout");
     check(getenv("ANDROID_APK") && !strcmp(getenv("ANDROID_APK"), apk), "ANDROID_APK is the APK path");
     check(getenv("PYTHONHOME") && !strcmp(getenv("PYTHONHOME"), files), "PYTHONHOME is files/");
-    check(getenv("PYTHONPATH") && strstr(getenv("PYTHONPATH"), "/lib/python3.12/lib-dynload"), "PYTHONPATH has lib-dynload");
+    snprintf(dyn, sizeof(dyn), "/lib/python%s/lib-dynload", version);
+    check(getenv("PYTHONPATH") && strstr(getenv("PYTHONPATH"), dyn), "PYTHONPATH has lib-dynload");
 
     /* A second call must not re-unpack, but must still set the environment. */
     check(tl_renpy_prepare(apk, data, "org.example.renpy"), "prepare is idempotent");

@@ -9,6 +9,7 @@
  * This does the same, so the SDL driver can run the game as it runs any other SDL2 game.
  */
 #define _DARWIN_C_SOURCE
+#include <dirent.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -112,7 +113,7 @@ bool tl_python_is_app(const char *apk)
 }
 
 /* Ren'Py's own layout (librenpython.so with CPython and SDL inside, and assets/private.mp3, a gzipped tar of
- * main.py + renpy/ + lib/python3.12). Its PythonSDLActivity.preparePython sets the four ANDROID_* variables and
+ * main.py + renpy/ + lib/pythonX.Y). Its PythonSDLActivity.preparePython sets the four ANDROID_* variables and
  * unpacks private.mp3 into getFilesDir(); no Java runs under the SDL driver, so do both here. */
 bool tl_renpy_is_app(const char *apk)
 {
@@ -145,7 +146,7 @@ bool tl_renpy_prepare(const char *apk, const char *data_dir, const char *package
         f = fopen(stamp_path, "w");
         if (f) { fputs(stamp, f); fclose(f); }
     }
-    char pub[1200], old[1200], pyhome[2400];
+    char pub[1200], old[1200], pyhome[2400], libdir[1100];
     snprintf(pub, sizeof(pub), "%s/sdcard/Android/data/%s/files", data_dir, package_name ? package_name : "");
     snprintf(old, sizeof(old), "%s/sdcard/%s", data_dir, package_name ? package_name : "");
     mkdirs(pub);
@@ -156,11 +157,26 @@ bool tl_renpy_prepare(const char *apk, const char *data_dir, const char *package
     setenv("ANDROID_PUBLIC", pub, 1);
     setenv("ANDROID_OLD_PUBLIC", old, 1);
     setenv("ANDROID_APK", apk, 1);
-    /* The private.mp3 archive puts CPython's library under files/lib/python3.12, and renpy/ + main.py
-       at the root. Point the interpreter there; librenpython's own bootstrap may set these too. */
-    snprintf(pyhome, sizeof(pyhome), "%s/lib/python3.12:%s/lib/python3.12/lib-dynload:%s", files, files, files);
+    /* The private.mp3 archive puts CPython's library under files/lib/pythonX.Y (2.7 for Ren'Py 7,
+       3.12 for Ren'Py 8), and renpy/ + main.py at the root. Ren'Py 7.4's Java side only sets the
+       ANDROID_* variables, so point the interpreter here too. */
+    char version[32] = "python3.12";
+    snprintf(libdir, sizeof(libdir), "%s/lib", files);
+    DIR *ld = opendir(libdir);
+    if (ld) {
+        struct dirent *e;
+        while ((e = readdir(ld))) {
+            if (!strncmp(e->d_name, "python", 6) && e->d_name[6] >= '0' && e->d_name[6] <= '9') {
+                snprintf(version, sizeof(version), "%s", e->d_name);
+                break;
+            }
+        }
+        closedir(ld);
+    }
+    snprintf(pyhome, sizeof(pyhome), "%s/lib/%s:%s/lib/%s/lib-dynload:%s", files, version, files, version, files);
     setenv("PYTHONHOME", files, 1);
     setenv("PYTHONPATH", pyhome, 1);
+    tl_log_line("renpy: Python %s", version);
     tl_log_line("renpy: ANDROID_PRIVATE=%s", files);
     return true;
 }

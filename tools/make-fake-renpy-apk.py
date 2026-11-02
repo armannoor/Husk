@@ -3,7 +3,7 @@
 """
 Write the two APKs tools/renpy-prepare-test.c needs, without a Ren'Py game.
 
-    make-fake-renpy-apk.py <renpy.apk> <plain.apk>
+    make-fake-renpy-apk.py <renpy.apk> <plain.apk> [python-version]
 
 The first has the layout every Ren'Py Android build has: assets/private.mp3
 is a gzipped tar of main.py, renpy/ and lib/python3.12; lib/arm64-v8a has
@@ -28,16 +28,17 @@ def tar_gz(files):
 
 
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) not in (3, 4):
         print(__doc__.strip().splitlines()[2], file=sys.stderr)
         return 2
     renpy_apk, plain_apk = sys.argv[1], sys.argv[2]
+    version = sys.argv[3] if len(sys.argv) == 4 else "3.12"
 
     payload = tar_gz({
         "main.py": b"# RENPY_MAIN_MARKER\nimport renpy\nrenpy.main()\n",
         "renpy/__init__.py": b"# renpy package\n",
-        "lib/python3.12/os.py": b"# PYTHON_STDLIB_MARKER\n",
-        "lib/python3.12/lib-dynload/README": b"# extension modules live here\n",
+        f"lib/python{version}/os.py": b"# PYTHON_STDLIB_MARKER\n",
+        f"lib/python{version}/lib-dynload/README": b"# extension modules live here\n",
     })
     with zipfile.ZipFile(renpy_apk, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("AndroidManifest.xml", b"\x03\x00\x08\x00")   # binary XML is not needed by prepare

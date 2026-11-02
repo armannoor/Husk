@@ -233,6 +233,21 @@ jobs:
           fi
           ls -l
 
+      - name: Fetch the private Ren'Py test APK
+        env:
+          TL_ASSETS_DEPLOY_KEY: ${{ secrets.TL_ASSETS_DEPLOY_KEY }}
+        run: |
+          set -eux
+          if [ -z "${TL_ASSETS_DEPLOY_KEY:-}" ]; then
+            echo "TL_ASSETS_DEPLOY_KEY is not set; skipping the Ren'Py run"
+            exit 0
+          fi
+          printf '%s\n' "$TL_ASSETS_DEPLOY_KEY" > "$RUNNER_TEMP/tl-assets-key"
+          chmod 600 "$RUNNER_TEMP/tl-assets-key"
+          GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/tl-assets-key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+            git clone --depth 1 git@github.com:armannoor/husk-tl-assets.git "$RUNNER_TEMP/tl-assets"
+          cp "$RUNNER_TEMP/tl-assets/Shattered Minds_1.0_tl.apk" "$RUNNER_TEMP/apks/renpy-test.apk"
+
       - name: Framework API coverage
         run: |
           set -eux
@@ -243,12 +258,14 @@ jobs:
       - name: Test the Ren'Py preparePython contract
         run: |
           set -eux
-          python3 tools/make-fake-renpy-apk.py "$RUNNER_TEMP/renpy-fake.apk" "$RUNNER_TEMP/plain.apk"
+          python3 tools/make-fake-renpy-apk.py "$RUNNER_TEMP/renpy-fake.apk" "$RUNNER_TEMP/plain.apk" 3.12
+          python3 tools/make-fake-renpy-apk.py "$RUNNER_TEMP/renpy-fake27.apk" "$RUNNER_TEMP/plain27.apk" 2.7
           clang -arch arm64 -O1 -g -o "$RUNNER_TEMP/renpy-prepare-test" \
             tools/renpy-prepare-test.c src/translation-layer-next/husk-tl-python.c \
             src/translation-layer/husk-tl-zip.c \
             -I src/translation-layer-next -I src/translation-layer -lz
-          "$RUNNER_TEMP/renpy-prepare-test" "$RUNNER_TEMP/renpy-fake.apk" "$RUNNER_TEMP/renpy-data"
+          "$RUNNER_TEMP/renpy-prepare-test" "$RUNNER_TEMP/renpy-fake.apk" "$RUNNER_TEMP/renpy-data" 3.12
+          "$RUNNER_TEMP/renpy-prepare-test" "$RUNNER_TEMP/renpy-fake27.apk" "$RUNNER_TEMP/renpy-data27" 2.7
 
       - name: Build the Java-app harness
         continue-on-error: true
@@ -278,12 +295,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/jdata"
           for apk in "$RUNNER_TEMP"/apks/*.apk; do
             name=$(basename "$apk")
+            secs=20
+            case "$name" in *renpy-test*) secs=60 ;; esac
             echo "=== $name" | tee -a "$RUNNER_TEMP/javaapp.txt"
             TL_ART="$ART" \
             TL_FRAMEWORK="$RUNNER_TEMP/build/husk-framework.dex" \
             TL_FRAMEWORK_RES="$RUNNER_TEMP/java-runtime/framework-res.apk" \
             TL_TMP="$RUNNER_TEMP/jdata" TL_DATA="$RUNNER_TEMP/jdata/$name" \
-              perl -e 'alarm 120; exec @ARGV' "$OUT/javaapp-test" "$apk" 20 > "$RUNNER_TEMP/$name.javaapp.log" 2>&1
+              perl -e 'alarm 120; exec @ARGV' "$OUT/javaapp-test" "$apk" "$secs" > "$RUNNER_TEMP/$name.javaapp.log" 2>&1
             rc=$?
             echo "  exit=$rc" | tee -a "$RUNNER_TEMP/javaapp.txt"
             tail -30 "$RUNNER_TEMP/$name.javaapp.log" | tee -a "$RUNNER_TEMP/javaapp.txt"
