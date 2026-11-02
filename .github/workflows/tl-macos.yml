@@ -179,3 +179,64 @@ jobs:
               -fobjc-arc -Wno-deprecated-declarations
           done
           echo "compiled $(ls "$RUNNER_TEMP/obj" | wc -l) objects"
+
+  framework:
+    name: Build the Java framework and check API coverage
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Build husk-framework.dex
+        run: |
+          set -eux
+          mkdir -p "$RUNNER_TEMP/build"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/r8.jar" \
+            https://maven.google.com/com.android.tools/r8/8.5.35/r8-8.5.35.jar
+          HUSK_JDK="$JAVA_HOME" HUSK_D8="$RUNNER_TEMP/r8.jar" \
+            src/java-framework/build.sh "$RUNNER_TEMP/build/husk-framework.dex"
+          ls -l "$RUNNER_TEMP/build"
+
+      - name: Fetch the reference runtime and sample APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eux
+          mkdir -p "$RUNNER_TEMP/ipa" "$RUNNER_TEMP/apks"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/Husk.ipa" \
+            https://github.com/Leviidev/Husk/releases/download/3.3/Husk.ipa
+          unzip -q "$RUNNER_TEMP/Husk.ipa" 'Payload/Husk.app/java-runtime/*' -d "$RUNNER_TEMP/ipa"
+          mv "$RUNNER_TEMP/ipa/Payload/Husk.app/java-runtime" "$RUNNER_TEMP/java-runtime"
+          cd "$RUNNER_TEMP/apks"
+          curl -fsSL --retry 3 -o fdroid.apk https://f-droid.org/F-Droid.apk
+          url=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+                https://api.github.com/repos/termux/termux-app/releases/latest \
+                | python3 -c 'import json,sys; a=json.load(sys.stdin)["assets"]; print(next(x["browser_download_url"] for x in a if "arm64-v8a" in x["name"] and x["name"].endswith(".apk")))' \
+                || true)
+          if [ -z "$url" ]; then
+            url='https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3%2Bgithub-debug_arm64-v8a.apk'
+          fi
+          curl -fsSL --retry 3 -o termux.apk "$url"
+          ls -l
+
+      - name: Framework API coverage
+        run: |
+          set -eux
+          python3 tools/compat/framework-gap.py --boot "$RUNNER_TEMP/java-runtime" \
+            --framework "$RUNNER_TEMP/build/husk-framework.dex" \
+            "$RUNNER_TEMP"/apks/*.apk | tee "$RUNNER_TEMP/framework-gap.txt"
+
+      - name: Upload the framework and the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: husk-framework
+          path: |
+            ${{ runner.temp }}/build/husk-framework.dex
+            ${{ runner.temp }}/framework-gap.txt
+          if-no-files-found: warn
