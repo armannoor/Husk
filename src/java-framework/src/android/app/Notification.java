@@ -49,7 +49,11 @@ public class Notification implements android.os.Parcelable {
         public int describeContents() { return 0; }
         public static final class Builder {
             private final int i; private final CharSequence t; private final PendingIntent p;
+            private final java.util.HashMap<String, Object> huskProps = new java.util.HashMap<>();
             public Builder(int icon, CharSequence title, PendingIntent intent) { i = icon; t = title; p = intent; } public Builder(Icon icon, CharSequence title, PendingIntent intent) { this(0, title, intent); } public Builder(Action a) { this(a.icon, a.title, a.actionIntent); }
+            /* Android 16 hints (NewPipe calls both when building playback notifications). */
+            public Builder setEmphasisHint(int h) { huskProps.put("EmphasisHint", Integer.valueOf(h)); return this; }
+            public Builder setStyleHint(int h) { huskProps.put("StyleHint", Integer.valueOf(h)); return this; }
             public Builder addExtras(Bundle b) { return this; } public Builder addRemoteInput(RemoteInput r) { return this; } public Builder setAllowGeneratedReplies(boolean b) { return this; }
             public Builder setSemanticAction(int a) { return this; } public Builder setContextual(boolean c) { return this; } public Builder setAuthenticationRequired(boolean b) { return this; }
             public Builder extend(Action.Extender e) { return e != null ? e.extend(this) : this; } public Bundle getExtras() { return new Bundle(); } public Action build() { return new Action(i, t, p); }
