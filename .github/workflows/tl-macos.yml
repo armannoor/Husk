@@ -222,6 +222,15 @@ jobs:
             url='https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3%2Bgithub-debug_arm64-v8a.apk'
           fi
           curl -fsSL --retry 3 -o termux.apk "$url"
+          # NewPipe: a large pure-Java/Media3 app, no native code of its own, so it exercises
+          # Activity + fragments + media sessions without the ELF loader in the way.
+          url=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+                https://api.github.com/repos/TeamNewPipe/NewPipe/releases/latest \
+                | python3 -c 'import json,sys; a=json.load(sys.stdin)["assets"]; print(next(x["browser_download_url"] for x in a if x["name"].startswith("NewPipe_") and x["name"].endswith(".apk")))' \
+                || true)
+          if [ -n "$url" ]; then
+            curl -fsSL --retry 3 -o newpipe.apk "$url" || rm -f newpipe.apk
+          fi
           ls -l
 
       - name: Framework API coverage
