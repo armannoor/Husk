@@ -6,8 +6,15 @@ public abstract class JobScheduler {
     /** Jobs are kept but not run: Husk runs one app in the foreground. */
     public static final class Impl extends JobScheduler {
         private final java.util.HashMap<Integer, JobInfo> mJobs = new java.util.HashMap<>();
+        private long mNextRun;
         public int schedule(JobInfo j) {
             mJobs.put(j.getId(), j);
+            /* WorkManager reschedules a finished job at once when the system reports it as done; on Android the
+             * scheduler then waits for the job's latency/period. There is no scheduler thread here, so run at most
+             * one job a second: without this, a periodic worker re-enqueues itself in a tight loop. */
+            long now = android.os.SystemClock.elapsedRealtime();
+            if (now < mNextRun) return RESULT_SUCCESS;
+            mNextRun = now + 1000;
             husk.Services.runJob(j);
             return RESULT_SUCCESS;
         }

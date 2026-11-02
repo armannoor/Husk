@@ -3,21 +3,52 @@ public class JobInfo implements android.os.Parcelable {
     public static final int NETWORK_TYPE_NONE = 0, NETWORK_TYPE_ANY = 1, NETWORK_TYPE_UNMETERED = 2, NETWORK_TYPE_NOT_ROAMING = 3, NETWORK_TYPE_CELLULAR = 4, BACKOFF_POLICY_LINEAR = 0, BACKOFF_POLICY_EXPONENTIAL = 1, PRIORITY_DEFAULT = 300;
     public static final long DEFAULT_INITIAL_BACKOFF_MILLIS = 30000, MAX_BACKOFF_DELAY_MILLIS = 18000000;
     private final int mId; private final android.os.PersistableBundle mExtras; private final android.content.ComponentName mService;
-    JobInfo(int id, android.os.PersistableBundle e, android.content.ComponentName service) { mId = id; mExtras = e; mService = service; }
+    private final long mIntervalMillis, mFlexMillis, mMinLatencyMillis, mMaxExecutionDelayMillis, mInitialBackoffMillis;
+    private final boolean mPeriodic, mPersisted, mRequiresCharging, mRequiresDeviceIdle, mRequiresBatteryNotLow, mRequiresStorageNotLow;
+    private final int mPriority, mNetworkType, mBackoffPolicy;
+
+    JobInfo(int id, android.os.PersistableBundle e, android.content.ComponentName service) {
+        this(id, e, service, 0, 0, 0, 0, false, false, PRIORITY_DEFAULT, NETWORK_TYPE_NONE,
+             false, false, false, false, DEFAULT_INITIAL_BACKOFF_MILLIS, BACKOFF_POLICY_EXPONENTIAL);
+    }
+
+    JobInfo(int id, android.os.PersistableBundle e, android.content.ComponentName service,
+            long interval, long flex, long minLatency, long maxDelay, boolean periodic, boolean persisted,
+            int priority, int networkType, boolean charging, boolean idle, boolean batteryNotLow, boolean storageNotLow,
+            long initialBackoff, int backoffPolicy) {
+        mId = id; mExtras = e != null ? e : new android.os.PersistableBundle(); mService = service;
+        mIntervalMillis = interval; mFlexMillis = flex; mMinLatencyMillis = minLatency; mMaxExecutionDelayMillis = maxDelay;
+        mPeriodic = periodic; mPersisted = persisted; mPriority = priority; mNetworkType = networkType;
+        mRequiresCharging = charging; mRequiresDeviceIdle = idle; mRequiresBatteryNotLow = batteryNotLow; mRequiresStorageNotLow = storageNotLow;
+        mInitialBackoffMillis = initialBackoff; mBackoffPolicy = backoffPolicy;
+    }
+
     public int getId() { return mId; } public android.os.PersistableBundle getExtras() { return mExtras; } public android.content.ComponentName getService() { return mService; }
+    public long getIntervalMillis() { return mIntervalMillis; } public long getFlexMillis() { return mFlexMillis; }
+    public long getMinLatencyMillis() { return mMinLatencyMillis; } public long getMaxExecutionDelayMillis() { return mMaxExecutionDelayMillis; }
+    public boolean isPeriodic() { return mPeriodic; } public boolean isPersisted() { return mPersisted; }
+    public int getPriority() { return mPriority; } public int getNetworkType() { return mNetworkType; }
+    public boolean isRequireCharging() { return mRequiresCharging; } public boolean isRequireDeviceIdle() { return mRequiresDeviceIdle; }
+    public boolean isRequireBatteryNotLow() { return mRequiresBatteryNotLow; } public boolean isRequireStorageNotLow() { return mRequiresStorageNotLow; }
+    public long getInitialBackoffMillis() { return mInitialBackoffMillis; } public int getBackoffPolicy() { return mBackoffPolicy; }
     public static long getMinPeriodMillis() { return 900000; } public static long getMinFlexMillis() { return 300000; }
     public int describeContents() { return 0; }
     public static final class Builder {
         private final int id; private final android.content.ComponentName service; private android.os.PersistableBundle extras = new android.os.PersistableBundle();
+        private long interval, flex, minLatency, maxDelay, initialBackoff = DEFAULT_INITIAL_BACKOFF_MILLIS;
+        private boolean periodic, persisted, charging, idle, batteryNotLow, storageNotLow;
+        private int priority = PRIORITY_DEFAULT, networkType = NETWORK_TYPE_NONE, backoffPolicy = BACKOFF_POLICY_EXPONENTIAL;
         public Builder(int id, android.content.ComponentName service) { this.id = id; this.service = service; }
-        public Builder setExtras(android.os.PersistableBundle e) { extras = e; return this; } public Builder setTransientExtras(android.os.Bundle e) { return this; } public Builder setRequiredNetworkType(int t) { return this; }
-        public Builder setRequiredNetwork(android.net.NetworkRequest r) { return this; } public Builder setRequiresCharging(boolean b) { return this; } public Builder setRequiresDeviceIdle(boolean b) { return this; }
-        public Builder setRequiresBatteryNotLow(boolean b) { return this; } public Builder setRequiresStorageNotLow(boolean b) { return this; } public Builder addTriggerContentUri(TriggerContentUri u) { return this; }
-        public Builder setTriggerContentUpdateDelay(long d) { return this; } public Builder setTriggerContentMaxDelay(long d) { return this; } public Builder setPeriodic(long i) { return this; } public Builder setPeriodic(long i, long f) { return this; }
-        public Builder setMinimumLatency(long l) { return this; } public Builder setOverrideDeadline(long d) { return this; } public Builder setBackoffCriteria(long b, int p) { return this; } public Builder setImportantWhileForeground(boolean b) { return this; }
-        public Builder setPrefetch(boolean b) { return this; } public Builder setPersisted(boolean b) { return this; } public Builder setExpedited(boolean b) { return this; } public Builder setEstimatedNetworkBytes(long d, long u) { return this; }
-        public Builder setUserInitiated(boolean b) { return this; } public Builder setPriority(int p) { return this; }
-        public JobInfo build() { return new JobInfo(id, extras, service); }
+        public Builder setExtras(android.os.PersistableBundle e) { extras = e != null ? e : new android.os.PersistableBundle(); return this; } public Builder setTransientExtras(android.os.Bundle e) { return this; } public Builder setRequiredNetworkType(int t) { networkType = t; return this; }
+        public Builder setRequiredNetwork(android.net.NetworkRequest r) { return this; } public Builder setRequiresCharging(boolean b) { charging = b; return this; } public Builder setRequiresDeviceIdle(boolean b) { idle = b; return this; }
+        public Builder setRequiresBatteryNotLow(boolean b) { batteryNotLow = b; return this; } public Builder setRequiresStorageNotLow(boolean b) { storageNotLow = b; return this; } public Builder addTriggerContentUri(TriggerContentUri u) { return this; }
+        public Builder setTriggerContentUpdateDelay(long d) { return this; } public Builder setTriggerContentMaxDelay(long d) { return this; } public Builder setPeriodic(long i) { return setPeriodic(i, Math.min(i, getMinFlexMillis())); }
+        public Builder setPeriodic(long i, long f) { periodic = true; interval = i; flex = f; return this; }
+        public Builder setMinimumLatency(long l) { minLatency = l; return this; } public Builder setOverrideDeadline(long d) { maxDelay = d; return this; }
+        public Builder setBackoffCriteria(long b, int p) { initialBackoff = b; backoffPolicy = p; return this; } public Builder setImportantWhileForeground(boolean b) { return this; }
+        public Builder setPrefetch(boolean b) { return this; } public Builder setPersisted(boolean b) { persisted = b; return this; } public Builder setExpedited(boolean b) { return this; } public Builder setEstimatedNetworkBytes(long d, long u) { return this; }
+        public Builder setUserInitiated(boolean b) { return this; } public Builder setPriority(int p) { priority = p; return this; }
+        public JobInfo build() { return new JobInfo(id, extras, service, interval, flex, minLatency, maxDelay, periodic, persisted, priority, networkType, charging, idle, batteryNotLow, storageNotLow, initialBackoff, backoffPolicy); }
         // ---- generated by tools/compat/fillmembers.py (Builder): the platform's members this class does not write (signatures only)
         public android.app.job.JobInfo.Builder addDebugTag(java.lang.String p0) { return this; }
         public android.app.job.JobInfo.Builder addDebugTags(java.util.Set p0) { return this; }
@@ -80,12 +111,11 @@ public class JobInfo implements android.os.Parcelable {
     public static final long REJECT_NEGATIVE_NETWORK_ESTIMATES = 253665015L;
     public static final long THROW_ON_INVALID_PRIORITY_VALUE = 140852299L;
     public static java.lang.String getBiasString(int p0) { return null; }
-    public static long getMinBackoffMillis() { return 0L; }
+    public static long getMinBackoffMillis() { return 10000L; }
     public static java.lang.String getPriorityString(int p0) { return null; }
     public static java.lang.String validateDebugTag(java.lang.String p0) { return null; }
     public static java.lang.String validateTraceTag(java.lang.String p0) { return null; }
     public void enforceValidity(boolean p0, boolean p1, boolean p2, boolean p3) {}
-    public int getBackoffPolicy() { return 0; }
     public int getBias() { return 0; }
     public android.content.ClipData getClipData() { return null; }
     public int getClipGrantFlags() { return 0; }
@@ -94,14 +124,7 @@ public class JobInfo implements android.os.Parcelable {
     public android.util.ArraySet getDebugTagsArraySet() { return null; }
     public long getEstimatedNetworkDownloadBytes() { return 0L; }
     public long getEstimatedNetworkUploadBytes() { return 0L; }
-    public long getFlexMillis() { return 0L; }
-    public long getInitialBackoffMillis() { return 0L; }
-    public long getIntervalMillis() { return 0L; }
-    public long getMaxExecutionDelayMillis() { return 0L; }
-    public long getMinLatencyMillis() { return 0L; }
     public long getMinimumNetworkChunkBytes() { return 0L; }
-    public int getNetworkType() { return 0; }
-    public int getPriority() { return 0; }
     public android.net.NetworkRequest getRequiredNetwork() { return null; }
     public java.lang.String getTraceTag() { return null; }
     public android.os.Bundle getTransientExtras() { return null; }
@@ -113,13 +136,7 @@ public class JobInfo implements android.os.Parcelable {
     public boolean isExemptedFromAppStandby() { return false; }
     public boolean isExpedited() { return false; }
     public boolean isImportantWhileForeground() { return false; }
-    public boolean isPeriodic() { return false; }
-    public boolean isPersisted() { return false; }
     public boolean isPrefetch() { return false; }
-    public boolean isRequireBatteryNotLow() { return false; }
-    public boolean isRequireCharging() { return false; }
-    public boolean isRequireDeviceIdle() { return false; }
-    public boolean isRequireStorageNotLow() { return false; }
     public boolean isUserInitiated() { return false; }
     // ---- end of generated members
 }
