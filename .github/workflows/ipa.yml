@@ -128,13 +128,20 @@ jobs:
           rsync -a "$APP/java-runtime/" build/java-runtime/
 
           # The build phase asks qemu-img for two sparse seeds. The base IPA
-          # already has the real ones and they are what gets shipped, so the
-          # build only needs files of the right shape.
+          # already carries the real ones, and a qcow2 header is not something
+          # truncate can produce, so copy them through.
           mkdir -p "$RUNNER_TEMP/bin"
           cat > "$RUNNER_TEMP/bin/qemu-img" <<'SH'
           #!/bin/sh
-          for a in "$@"; do out="$a"; done
-          truncate -s 64M "$out"
+          # qemu-img create -f qcow2 <file> <size>
+          file=""
+          prev=""
+          for a in "$@"; do prev="$file"; file="$a"; done
+          case "$prev" in
+            *lineage-efi-vars-seed.fd) cp "$HUSK_BASE_APP/lineage-efi-vars-seed.fd" "$prev" ;;
+            *lineage-vdb-seed.qcow2) cp "$HUSK_BASE_APP/lineage-vdb-seed.qcow2" "$prev" ;;
+            *) truncate -s 64M "$prev" ;;
+          esac
           SH
           chmod +x "$RUNNER_TEMP/bin/qemu-img"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
@@ -150,6 +157,8 @@ jobs:
           ls -l build/java-runtime/*.dex
 
       - name: Build and package
+        env:
+          HUSK_BASE_APP: ${{ runner.temp }}/base/Payload/Husk.app
         run: |
           set -eux
           # Xcode 26.6's SwiftUI marks the ViewBuilder/ToolbarContentBuilder
