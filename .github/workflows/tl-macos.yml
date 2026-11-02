@@ -53,6 +53,7 @@ jobs:
           # harness supplies the Mach side (tests/translation-layer/attempt_host.c).
           clang -arch arm64 -O1 -g -Wall -Wno-unused-parameter -o "$OUT/attempt_host" \
             tests/translation-layer/attempt_host.c \
+            tests/translation-layer/host_audio_stub.c \
             "$SRC"/*.c \
             -I "$SRC" -lz \
             -framework Foundation -framework CoreGraphics -framework ImageIO \

@@ -9,7 +9,15 @@ TMP="$(mktemp -d)"
 python3 "$HERE/gen/gles20.py" "$HERE/src/android/opengl" "$HERE/../translation-layer-next/husk-tl-dvm-gles20.c" >/dev/null
 # libcore's own classes that javac's JDK does not have (org.xmlpull): compiled to build against, not put in the dex
 "$JDK/bin/javac" -nowarn --release 8 -encoding UTF-8 -d "$TMP/stubs" $(find "$HERE/stubs" -name '*.java')
-if ! "$JDK/bin/javac" -nowarn --release 8 -encoding UTF-8 -Xmaxerrs 100000 -cp "$TMP/stubs" -d "$TMP/classes" $(find "$HERE/src" "$HERE/gen-src" -name '*.java') 2> "$TMP/javac.log"; then
+# An argument file: the 3,000-odd sources exceed the Windows command line limit.
+# cygpath (MSYS/Git Bash) turns the paths into the ones the Windows javac reads.
+find "$HERE/src" "$HERE/gen-src" -name '*.java' > "$TMP/sources.txt"
+ARGS="$TMP/sources.txt"
+if command -v cygpath >/dev/null 2>&1; then
+    while IFS= read -r f; do cygpath -w "$f"; done < "$TMP/sources.txt" > "$TMP/sources-win.txt"
+    ARGS="$(cygpath -w "$TMP/sources-win.txt")"
+fi
+if ! "$JDK/bin/javac" -nowarn --release 8 -encoding UTF-8 -Xmaxerrs 100000 -cp "$TMP/stubs" -d "$TMP/classes" "@$ARGS" 2> "$TMP/javac.log"; then
     grep -v "^Note:" "$TMP/javac.log" > "${JAVAC_LOG:-/dev/stderr}"; echo "javac failed" >&2; exit 1
 fi
 (cd "$TMP/classes" && "$JDK/bin/jar" cf "$TMP/classes.jar" .)
